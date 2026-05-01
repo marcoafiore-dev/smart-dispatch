@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Dispatch - Logant</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f5; }
+        
+        .container { max-width: 1400px; margin: 0 auto; }
+        
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, #185FA5 0%, #0C447C 100%);
+            color: white;
+            padding: 1.5rem 2rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .header h1 { font-size: 24px; margin-bottom: 0.5rem; }
+        .header p { font-size: 13px; opacity: 0.9; }
+        
+        /* Role Selector */
+        .role-selector {
+            background: white;
+            padding: 1.5rem 2rem;
+            border-bottom: 1px solid #ddd;
+            display: flex;
+            gap: 1rem;
+        }
+        
+        .role-btn {
+            padding: 10px 20px;
+            border: 2px solid #ddd;
+            background: white;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        
+        .role-btn.active {
+            border-color: #0C447C;
+            background: #0C447C;
+            color: white;
+        }
+        
+        .role-btn:hover { border-color: #0C447C; }
+        
+        /* Main Content */
+        .content { padding: 2rem; }
+        
+        .view { display: none; }
+        .view.active { display: block; }
+        
+        /* Admin Dashboard */
+        .admin-header {
+            background: linear-gradient(135deg, #185FA5 0%, #0C447C 100%);
+            color: white;
+            padding: 2rem;
+            border-radius: 8px;
+            margin-bottom: 2rem;
+        }
+        
+        .admin-header h2 { font-size: 20px; margin-bottom: 0.5rem; }
+        
+        /* KPI Grid */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        
+        .kpi-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+            text-align: center;
+        }
+        
+        .kpi-label { font-size: 12px; color: #666; text-transform: uppercase; margin-bottom: 0.5rem; }
+        .kpi-value { font-size: 32px; font-weight: 600; color: #0C447C; }
+        
+        /* Buttons */
+        .btn {
+            padding: 10px 20px;
+            background: #0C447C;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        
+        .btn:hover { opacity: 0.9; }
+        .btn.secondary { background: #f0f0f0; color: #333; }
+        
+        /* Forms */
+        .form-group {
+            margin-bottom: 1rem;
+        }
+        
+        .form-group label {
+            display: block;
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+        
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .modal.active { display: flex; }
+        
+        .modal-content {
+            background: white;
+            padding: 2rem;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 500px;
+        }
+        
+        .modal-content h3 { margin-bottom: 1rem; }
+        
+        /* Tables */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        
+        th {
+            background: #f0f0f0;
+            padding: 1rem;
+            text-align: left;
+            font-weight: 600;
+            font-size: 12px;
+            color: #333;
+        }
+        
+        td {
+            padding: 1rem;
+            border-bottom: 1px solid #eee;
+        }
+        
+        tr:hover { background: #f9f9f9; }
+        
+        /* Cards */
+        .card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            border: 1px solid #ddd;
+        }
+        
+        .card-title { font-size: 16px; font-weight: 600; margin-bottom: 1rem; }
+        
+        /* Trip Card */
+        .trip-card {
+            background: white;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+        }
+        
+        .trip-card.active {
+            border-color: #27500A;
+            background: #f0f8f0;
+        }
+        
+        .trip-route { font-size: 16px; font-weight: 600; color: #333; margin-bottom: 0.5rem; }
+        .trip-price { font-size: 18px; font-weight: 600; color: #0C447C; }
+        .trip-details { font-size: 12px; color: #666; margin: 0.5rem 0; }
+        
+        /* Status Badge */
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+            margin-right: 0.5rem;
+            margin-top: 0.5rem;
+        }
+        
+        .badge-success { background: #E8F5E9; color: #27500A; }
+        .badge-warning { background: #FFF3E0; color: #E65100; }
+        .badge-info { background: #E3F2FD; color: #0C447C; }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+            .content { padding: 1rem; }
+        }
+        
+        .section-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin: 2rem 0 1rem 0;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <div class="header">
+        <h1>⚡ Smart Dispatch - MVP</h1>
+        <p>Demo interactivo de Logant Logistics</p>
+    </div>
+    
+    <!-- Role Selector -->
+    <div class="role-selector">
+        <button class="role-btn active" onclick="switchRole('admin')">📊 Admin - Logant</button>
+        <button class="role-btn" onclick="switchRole('conductor')">📱 Conductor</button>
+    </div>
+    
+    <div class="content">
+        <!-- ADMIN VIEW -->
+        <div id="admin" class="view active">
+            <div class="admin-header">
+                <h2>Dashboard de Administrador</h2>
+                <p>Gestiona viajes y subastas en tiempo real</p>
+            </div>
+            
+            <!-- KPIs -->
+            <div class="kpi-grid">
+                <div class="kpi-card">
+                    <div class="kpi-label">Subastas Activas</div>
+                    <div class="kpi-value" id="activeAuctions">3</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-label">Ofertas Recibidas</div>
+                    <div class="kpi-value" id="totalOffers">12</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-label">Viajes en Curso</div>
+                    <div class="kpi-value" id="activeTrips">5</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-label">OCT Promedio</div>
+                    <div class="kpi-value" id="avgOCT">28 min</div>
+                </div>
+            </div>
+            
+            <!-- Create Trip Button -->
+            <button class="btn" onclick="openCreateTripModal()">+ Crear Nuevo Viaje</button>
+            
+            <div class="section-title">Subastas en Vivo</div>
+            
+            <!-- Trips Table -->
+            <table id="tripsTable">
+                <thead>
+                    <tr>
+                        <th>Ruta</th>
+                        <th>Precio Base</th>
+                        <th>Ofertas</th>
+                        <th>Ganador Actual</th>
+                        <th>Estado</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="tripsBody">
+                    <!-- Se llena con JavaScript -->
+                </tbody>
+            </table>
+            
+            <!-- Create Trip Modal -->
+            <div id="createTripModal" class="modal">
+                <div class="modal-content">
+                    <h3>Crear Nuevo Viaje</h3>
+                    <div class="form-group">
+                        <label>Origen</label>
+                        <input type="text" id="origin" placeholder="ej: CABA">
+                    </div>
+                    <div class="form-group">
+                        <label>Destino</label>
+                        <input type="text" id="destination" placeholder="ej: La Plata">
+                    </div>
+                    <div class="form-group">
+                        <label>Precio Base ($)</label>
+                        <input type="number" id="basePrice" placeholder="850">
+                    </div>
+                    <div class="form-group">
+                        <label>Tipo de Carga</label>
+                        <select id="cargoType">
+                            <option value="refrigerado">Refrigerado</option>
+                            <option value="general">Carga General</option>
+                            <option value="electronica">Electrónica</option>
+                        </select>
+                    </div>
+                    <div style="display: flex; gap: 1rem;">
+                        <button class="btn" onclick="createTrip()">Crear</button>
+                        <button class="btn secondary" onclick="closeCreateTripModal()">Cancelar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- CONDUCTOR VIEW -->
+        <div id="conductor" class="view">
+            <div style="background: linear-gradient(135deg, #27500A 0%, #173404 100%); color: white; padding: 2rem; border-radius: 8px; margin-bottom: 2rem;">
+                <h2>Carlos Díaz</h2>
+                <p>Rating: 4.9★ | 15 entregas completadas</p>
+            </div>
+            
+            <div class="section-title">Viajes Disponibles Para Ti</div>
+            
+            <div id="conductorTrips">
+                <!-- Se llena con JavaScript -->
+            </div>
+            
+            <!-- Offer Modal -->
+            <div id="offerModal" class="modal">
+                <div class="modal-content">
+                    <h3 id="offerTripTitle">Hacer Oferta</h3>
+                    <div id="offerDetails"></div>
+                    <div class="form-group">
+                        <label>Mi Precio ($)</label>
+                        <input type="number" id="myPrice" placeholder="Precio">
+                    </div>
+                    <div style="display: flex; gap: 1rem;">
+                        <button class="btn" onclick="submitOffer()">Hacer Oferta</button>
+                        <button class="btn secondary" onclick="closeOfferModal()">Cancelar</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="section-title">Mis Viajes Asignados</div>
+            <div id="myAssignedTrips">
+                <!-- Se llena con JavaScript -->
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Estado global
+        let appState = {
+            trips: [],
+            offers: [],
+            selectedTrip: null,
+            role: 'admin'
+        };
+        
+        // Datos iniciales
+        const initialTrips = [
+            {
+                id: 1,
+                origin: 'CABA',
+                destination: 'La Plata',
+                basePrice: 850,
+                cargoType: 'refrigerado',
+                distance: 65,
+                status: 'active',
+                offers: [
+                    { conductor: 'Carlos Díaz', price: 820, rating: 4.9, distance: 8 },
+                    { conductor: 'Juan Martínez', price: 850, rating: 4.8, distance: 12 },
+                    { conductor: 'Roberto García', price: 815, rating: 4.7, distance: 18 }
+                ]
+            },
+            {
+                id: 2,
+                origin: 'Bernal',
+                destination: 'Moreno',
+                basePrice: 620,
+                cargoType: 'general',
+                distance: 42,
+                status: 'active',
+                offers: [
+                    { conductor: 'María López', price: 600, rating: 4.6, distance: 15 },
+                    { conductor: 'Alejandra López', price: 590, rating: 4.5, distance: 22 }
+                ]
+            },
+            {
+                id: 3,
+                origin: 'San Martín',
+                destination: 'Zárate',
+                basePrice: 1200,
+                cargoType: 'electronica',
+                distance: 78,
+                status: 'completed',
+                offers: []
+            }
+        ];
+        
+        appState.trips = initialTrips;
+        
+        // Funciones
+        function switchRole(role) {
+            appState.role = role;
+            document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+            document.getElementById(role).classList.add('active');
+            document.querySelectorAll('.role-btn').forEach(b => b.classList.remove('active'));
+            event.target.classList.add('active');
+            render();
+        }
+        
+        function openCreateTripModal() {
+            document.getElementById('createTripModal').classList.add('active');
+        }
+        
+        function closeCreateTripModal() {
+            document.getElementById('createTripModal').classList.remove('active');
+        }
+        
+        function createTrip() {
+            const newTrip = {
+                id: appState.trips.length + 1,
+                origin: document.getElementById('origin').value,
+                destination: document.getElementById('destination').value,
+                basePrice: parseFloat(document.getElementById('basePrice').value),
+                cargoType: document.getElementById('cargoType').value,
+                distance: Math.random() * 100,
+                status: 'active',
+                offers: []
+            };
+            
+            appState.trips.push(newTrip);
+            closeCreateTripModal();
+            document.getElementById('origin').value = '';
+            document.getElementById('destination').value = '';
+            document.getElementById('basePrice').value = '';
+            render();
+        }
+        
+        function openOfferModal(tripId) {
+            appState.selectedTrip = appState.trips.find(t => t.id === tripId);
+            document.getElementById('offerModal').classList.add('active');
+            
+            const trip = appState.selectedTrip;
+            document.getElementById('offerTripTitle').textContent = `Hacer Oferta - ${trip.origin} → ${trip.destination}`;
+            
+            let detailsHTML = `
+                <div class="card">
+                    <strong>Precio Base:</strong> $${trip.basePrice}<br/>
+                    <strong>Distancia:</strong> ${trip.distance.toFixed(0)} km<br/>
+                    <strong>Tipo:</strong> ${trip.cargoType}<br/>
+                </div>
+            `;
+            
+            if (trip.offers && trip.offers.length > 0) {
+                detailsHTML += '<div class="card"><strong>Otros conductores ofertaron:</strong><br/>';
+                trip.offers.forEach(o => {
+                    detailsHTML += `${o.conductor}: $${o.price}<br/>`;
+                });
+                detailsHTML += '</div>';
+            }
+            
+            document.getElementById('offerDetails').innerHTML = detailsHTML;
+        }
+        
+        function closeOfferModal() {
+            document.getElementById('offerModal').classList.remove('active');
+        }
+        
+        function submitOffer() {
+            const myPrice = parseFloat(document.getElementById('myPrice').value);
+            if (appState.selectedTrip && myPrice > 0) {
+                const offer = {
+                    conductor: 'Carlos Díaz',
+                    price: myPrice,
+                    rating: 4.9,
+                    distance: 8
+                };
+                
+                appState.selectedTrip.offers.push(offer);
+                appState.selectedTrip.offers.sort((a, b) => a.price - b.price);
+                
+                alert(`✅ Oferta de $${myPrice} registrada!`);
+                closeOfferModal();
+                document.getElementById('myPrice').value = '';
+                render();
+            }
+        }
+        
+        function assignWinner(tripId) {
+            const trip = appState.trips.find(t => t.id === tripId);
+            if (trip && trip.offers && trip.offers.length > 0) {
+                const winner = trip.offers[0];
+                alert(`✅ Viaje asignado a ${winner.conductor} por $${winner.price}`);
+                trip.status = 'assigned';
+                render();
+            }
+        }
+        
+        function render() {
+            if (appState.role === 'admin') {
+                renderAdmin();
+            } else {
+                renderConductor();
+            }
+        }
+        
+        function renderAdmin() {
+            const activeTripsCount = appState.trips.filter(t => t.status === 'active').length;
+            const totalOffers = appState.trips.reduce((sum, t) => sum + (t.offers ? t.offers.length : 0), 0);
+            
+            document.getElementById('activeAuctions').textContent = activeTripsCount;
+            document.getElementById('totalOffers').textContent = totalOffers;
+            
+            let tableHTML = '';
+            appState.trips.forEach(trip => {
+                const winner = trip.offers && trip.offers.length > 0 ? trip.offers[0].conductor : '-';
+                const statusBadge = trip.status === 'active' ? 
+                    '<span class="badge badge-warning">Activa</span>' : 
+                    '<span class="badge badge-success">Asignada</span>';
+                
+                tableHTML += `
+                    <tr>
+                        <td><strong>${trip.origin} → ${trip.destination}</strong></td>
+                        <td>$${trip.basePrice}</td>
+                        <td>${trip.offers ? trip.offers.length : 0} ofertas</td>
+                        <td>${winner}</td>
+                        <td>${statusBadge}</td>
+                        <td>
+                            ${trip.status === 'active' && trip.offers && trip.offers.length > 0 ? 
+                                `<button class="btn" onclick="assignWinner(${trip.id})">Asignar</button>` : 
+                                '-'}
+                        </td>
+                    </tr>
+                `;
+            });
+            
+            document.getElementById('tripsBody').innerHTML = tableHTML;
+        }
+        
+        function renderConductor() {
+            let tripsHTML = '';
+            appState.trips.filter(t => t.status === 'active').forEach(trip => {
+                tripsHTML += `
+                    <div class="trip-card">
+                        <div class="trip-route">${trip.origin} → ${trip.destination}</div>
+                        <div class="trip-price">$${trip.basePrice}</div>
+                        <div class="trip-details">📦 ${trip.cargoType} | 📍 ${trip.distance.toFixed(0)} km</div>
+                        <span class="badge badge-info">95% compatible</span>
+                        <span class="badge badge-warning">${trip.offers ? trip.offers.length : 0} ofertas</span>
+                        <br/>
+                        <button class="btn" onclick="openOfferModal(${trip.id})" style="margin-top: 1rem;">Ver Detalles y Ofertar</button>
+                    </div>
+                `;
+            });
+            
+            document.getElementById('conductorTrips').innerHTML = tripsHTML || '<p>No hay viajes disponibles</p>';
+            
+            // Mostrar viajes asignados
+            let assignedTripsHTML = '';
+            const assignedTrips = appState.trips.filter(t => t.status === 'assigned');
+            
+            if (assignedTrips.length > 0) {
+                assignedTripsHTML = assignedTrips.map(trip => {
+                    const winner = trip.offers && trip.offers.length > 0 ? trip.offers[0].conductor : '';
+                    const isMyTrip = winner === 'Carlos Díaz';
+                    
+                    if (isMyTrip) {
+                        return `
+                            <div class="trip-card active">
+                                <div class="trip-route">✅ ${trip.origin} → ${trip.destination}</div>
+                                <div class="trip-price">$${trip.offers[0].price}</div>
+                                <div class="trip-details">¡Ganaste esta subasta! 🎉</div>
+                                <span class="badge badge-success">Asignado</span>
+                            </div>
+                        `;
+                    }
+                    return '';
+                }).join('');
+            }
+            
+            document.getElementById('myAssignedTrips').innerHTML = assignedTripsHTML || '<p>Aún no tienes viajes asignados</p>';
+        }
+        
+        // Inicializar
+        render();
+    </script>
+</body>
+</html>
