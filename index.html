@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Dispatch - MVP Completo v6</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f5; }
+        
+        .container { max-width: 1400px; margin: 0 auto; }
+        
+        .header { background: linear-gradient(135deg, #185FA5 0%, #0C447C 100%); color: white; padding: 1.5rem 2rem; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .header h1 { font-size: 24px; margin-bottom: 0.5rem; }
+        .header p { font-size: 13px; opacity: 0.9; }
+        
+        .role-selector { background: white; padding: 1.5rem 2rem; border-bottom: 1px solid #ddd; display: flex; gap: 1rem; flex-wrap: wrap; }
+        .role-btn { padding: 10px 20px; border: 2px solid #ddd; background: white; border-radius: 6px; cursor: pointer; font-weight: 500; transition: all 0.2s; }
+        .role-btn.active { border-color: #0C447C; background: #0C447C; color: white; }
+        
+        .content { padding: 2rem; }
+        .view { display: none; }
+        .view.active { display: block; }
+        
+        .tabs { background: white; border-bottom: 1px solid #ddd; margin-bottom: 2rem; display: flex; border-radius: 8px 8px 0 0; overflow: hidden; }
+        .tab-btn { padding: 1rem 1.5rem; border: none; background: #f9f9f9; cursor: pointer; font-weight: 500; font-size: 14px; border-bottom: 3px solid transparent; transition: all 0.2s; }
+        .tab-btn.active { background: white; border-bottom-color: #0C447C; color: #0C447C; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        
+        .admin-header { background: linear-gradient(135deg, #185FA5 0%, #0C447C 100%); color: white; padding: 2rem; border-radius: 8px; margin-bottom: 2rem; }
+        .admin-header h2 { font-size: 20px; margin-bottom: 0.5rem; }
+        
+        .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+        .kpi-card { background: white; padding: 1.5rem; border-radius: 8px; border: 1px solid #ddd; text-align: center; }
+        .kpi-label { font-size: 12px; color: #666; text-transform: uppercase; margin-bottom: 0.5rem; }
+        .kpi-value { font-size: 32px; font-weight: 600; color: #0C447C; }
+        
+        .trip-card { background: #f9fafb; padding: 1.5rem; border-radius: 8px; margin-bottom: 1rem; border-left: 4px solid #0C447C; }
+        .trip-header { display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem; }
+        .trip-title { font-weight: 600; color: #0C447C; margin-bottom: 0.5rem; }
+        .trip-details { font-size: 13px; color: #666; line-height: 1.6; }
+        .trip-price { text-align: right; }
+        .trip-price-num { font-size: 24px; font-weight: 600; color: #27500A; }
+        .trip-price-km { font-size: 13px; color: #999; }
+        
+        .countdown-section { background: #fff3cd; padding: 1.5rem; border-radius: 8px; margin: 1.5rem 0; border-left: 4px solid #FF9800; text-align: center; }
+        .countdown-num { font-size: 48px; font-weight: 600; color: #FF9800; font-family: 'Courier New', monospace; }
+        .countdown-label { font-size: 14px; color: #666; margin-top: 0.5rem; }
+        
+        .ranking-section { background: white; padding: 1.5rem; border-radius: 8px; margin-bottom: 1.5rem; border: 1px solid #ddd; }
+        .ranking-item { display: flex; justify-content: space-between; padding: 1rem; border-bottom: 1px solid #eee; align-items: center; }
+        .ranking-item:last-child { border-bottom: none; }
+        .ranking-place { font-weight: 600; color: #0C447C; width: 40px; text-align: center; }
+        .ranking-info { flex: 1; }
+        .ranking-name { font-weight: 500; }
+        .ranking-offer { color: #27500A; font-weight: 600; }
+        
+        .winner-section { background: #e8f5e9; padding: 1.5rem; border-radius: 8px; border: 2px solid #27500A; margin-bottom: 1.5rem; text-align: center; }
+        .winner-title { color: #27500A; font-size: 18px; font-weight: 600; margin-bottom: 1rem; }
+        .winner-info { color: #155724; }
+        
+        .form-group { margin-bottom: 1rem; }
+        .form-group label { display: block; margin-bottom: 0.5rem; font-weight: 500; font-size: 14px; }
+        .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; }
+        .form-group input:focus, .form-group select:focus { outline: none; border-color: #0C447C; box-shadow: 0 0 0 3px rgba(12, 68, 124, 0.1); }
+        
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+        .form-row.full { grid-template-columns: 1fr; }
+        
+        .btn { padding: 10px 20px; background: #0C447C; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 500; transition: all 0.2s; font-size: 14px; }
+        .btn:hover { opacity: 0.9; }
+        .btn.secondary { background: #f0f0f0; color: #333; border: 1px solid #ddd; }
+        .btn.success { background: #27500A; }
+        .btn.danger { background: #d32f2f; }
+        .btn.small { padding: 6px 12px; font-size: 12px; }
+        
+        .table-responsive { overflow-x: auto; }
+        .table { width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; }
+        .table thead { background: #f9f9f9; }
+        .table th { padding: 1rem; text-align: left; font-weight: 600; font-size: 13px; color: #0C447C; text-transform: uppercase; }
+        .table td { padding: 1rem; border-bottom: 1px solid #eee; font-size: 13px; }
+        .table tbody tr:hover { background: #f9f9f9; }
+        
+        .status-badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; text-transform: uppercase; }
+        .status-badge.pending { background: #fff3cd; color: #856404; }
+        .status-badge.approved { background: #d4edda; color: #155724; }
+        .status-badge.rejected { background: #f8d7da; color: #721c24; }
+        
+        .offer-input { display: grid; grid-template-columns: 1fr auto; gap: 1rem; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #ddd; }
+        .offer-input input { padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; }
+        
+        .progress-bar { background: #ddd; height: 4px; border-radius: 4px; margin-bottom: 2rem; overflow: hidden; }
+        .progress-fill { background: linear-gradient(90deg, #185FA5, #0C447C); height: 100%; transition: width 0.3s ease; }
+        
+        .step-header { display: flex; align-items: center; gap: 1rem; margin-bottom: 2rem; }
+        .step-number { background: #0C447C; color: white; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; }
+        
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; }
+        .modal.active { display: flex; align-items: center; justify-content: center; }
+        .modal-content { background: white; padding: 2rem; border-radius: 8px; max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto; }
+        .modal-close { float: right; font-size: 28px; cursor: pointer; }
+        
+        @media (max-width: 768px) {
+            .form-row { grid-template-columns: 1fr; }
+            .trip-header { flex-direction: column; }
+            .offer-input { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="container">
+            <h1>🚚 Smart Dispatch - MVP v6 Completo</h1>
+            <p>Plataforma de Subastas + Onboarding (Todas las funcionalidades integradas)</p>
+        </div>
+    </div>
+
+    <div class="role-selector">
+        <div class="container" style="width: 100%; padding: 0; display: flex; gap: 1rem; flex-wrap: wrap;">
+            <button class="role-btn active" onclick="switchRole(this, 'conductor')">👤 Conductor</button>
+            <button class="role-btn" onclick="switchRole(this, 'admin')">⚙️ Admin Logant</button>
+            <button class="role-btn" onclick="switchRole(this, 'onboarding')">📝 Onboarding</button>
+        </div>
+    </div>
+
+    <div class="content">
+        <div class="container">
+            
+            <!-- CONDUCTOR VIEW (COMPLETO) -->
+            <div id="conductor-view" class="view active">
+                <h2 style="color: #0C447C; margin-bottom: 1.5rem;">📱 Viajes Disponibles</h2>
+                <div id="trips-container"></div>
+                
+                <!-- Modal para countdown y ranking -->
+                <div id="auction-modal" class="modal">
+                    <div class="modal-content">
+                        <span class="modal-close" onclick="closeAuctionModal()">&times;</span>
+                        <h2 style="color: #0C447C; margin-bottom: 1.5rem;">🏆 Subasta en Tiempo Real</h2>
+                        
+                        <div class="countdown-section">
+                            <p>Tiempo restante:</p>
+                            <div class="countdown-num" id="modal-countdown">60</div>
+                            <div class="countdown-label">segundos</div>
+                        </div>
+                        
+                        <div class="ranking-section">
+                            <h3 style="color: #0C447C; margin-bottom: 1rem;">🏅 Ranking de Ofertas</h3>
+                            <div id="modal-ranking"></div>
+                        </div>
+                        
+                        <div id="modal-winner" class="winner-section" style="display: none;">
+                            <div class="winner-title">🎉 ¡GANASTE LA SUBASTA!</div>
+                            <div class="winner-info">
+                                <p style="margin-bottom: 1rem;">Tu oferta fue la más competitiva</p>
+                                <p style="font-weight: 600;">Datos de carga:</p>
+                                <p id="modal-winner-details"></p>
+                            </div>
+                        </div>
+                        
+                        <div id="modal-gps" style="background: #e3f2fd; padding: 1rem; border-radius: 6px; border-left: 4px solid #185FA5; margin-top: 1rem; text-align: center; display: none;">
+                            <p style="color: #0C447C; margin-bottom: 0.5rem;"><strong>📍 GPS</strong></p>
+                            <p style="font-size: 12px; color: #666;">Enviar ubicación en vivo al despachante</p>
+                            <button class="btn" style="margin-top: 0.5rem;" onclick="enableGPS()">Activar GPS</button>
+                        </div>
+                        
+                        <button class="btn secondary" style="width: 100%; margin-top: 1.5rem;" onclick="closeAuctionModal()">Cerrar</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ADMIN VIEW (COMPLETO) -->
+            <div id="admin-view" class="view">
+                <div class="tabs">
+                    <button class="tab-btn active" onclick="switchAdminTab(this, 'dashboard')">📊 Dashboard</button>
+                    <button class="tab-btn" onclick="switchAdminTab(this, 'crear-viaje')">➕ Crear Viaje</button>
+                    <button class="tab-btn" onclick="switchAdminTab(this, 'subastas')">🏆 Subastas Activas</button>
+                    <button class="tab-btn" onclick="switchAdminTab(this, 'conductores')">👥 Conductores</button>
+                </div>
+
+                <!-- Dashboard -->
+                <div id="admin-dashboard" class="tab-content active">
+                    <div class="admin-header">
+                        <h2>Panel de Control</h2>
+                        <p>Gestiona subastas, conductores y viajes</p>
+                    </div>
+                    <div class="kpi-grid">
+                        <div class="kpi-card">
+                            <div class="kpi-label">Subastas Activas</div>
+                            <div class="kpi-value" id="kpi-subastas">5</div>
+                        </div>
+                        <div class="kpi-card">
+                            <div class="kpi-label">Ofertas Recibidas</div>
+                            <div class="kpi-value" id="kpi-ofertas">23</div>
+                        </div>
+                        <div class="kpi-card">
+                            <div class="kpi-label">Viajes en Curso</div>
+                            <div class="kpi-value" id="kpi-viajes">8</div>
+                        </div>
+                        <div class="kpi-card">
+                            <div class="kpi-label">Conductores Activos</div>
+                            <div class="kpi-value" id="kpi-conductores">42</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Crear Viaje -->
+                <div id="admin-crear-viaje" class="tab-content">
+                    <div style="background: white; padding: 2rem; border-radius: 8px;">
+                        <h3 style="color: #0C447C; margin-bottom: 1.5rem;">➕ Crear Nuevo Viaje</h3>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Origen <span style="color: red;">*</span></label>
+                                <input type="text" id="new-origen" placeholder="Ej: Buenos Aires">
+                            </div>
+                            <div class="form-group">
+                                <label>Destino <span style="color: red;">*</span></label>
+                                <input type="text" id="new-destino" placeholder="Ej: Rosario">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Distancia (km) <span style="color: red;">*</span></label>
+                                <input type="number" id="new-km" placeholder="300">
+                            </div>
+                            <div class="form-group">
+                                <label>Precio Base ($) <span style="color: red;">*</span></label>
+                                <input type="number" id="new-precio" placeholder="45000">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Tipo de Carga <span style="color: red;">*</span></label>
+                                <input type="text" id="new-carga" placeholder="Ej: Bebidas">
+                            </div>
+                            <div class="form-group">
+                                <label>Urgencia <span style="color: red;">*</span></label>
+                                <select id="new-urgencia">
+                                    <option value="Normal">Normal</option>
+                                    <option value="Urgente">Urgente</option>
+                                    <option value="Muy Urgente">Muy Urgente</option>
+                                </select>
+                            </div>
+                        </div>
+                        <button class="btn success" style="width: 100%; margin-top: 1.5rem;" onclick="crearViaje()">✓ Crear Viaje</button>
+                    </div>
+                </div>
+
+                <!-- Subastas Activas -->
+                <div id="admin-subastas" class="tab-content">
+                    <h3 style="margin-bottom: 1.5rem; color: #0C447C;">🏆 Subastas en Tiempo Real</h3>
+                    <div id="admin-subastas-container"></div>
+                </div>
+
+                <!-- Conductores -->
+                <div id="admin-conductores" class="tab-content">
+                    <h3 style="margin-bottom: 1.5rem; color: #0C447C;">👥 Gestión de Conductores</h3>
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Nombre</th>
+                                    <th>DNI</th>
+                                    <th>Teléfono</th>
+                                    <th>Documentación</th>
+                                    <th>Estado</th>
+                                    <th>Viajes</th>
+                                    <th>Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody id="conductores-tbody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ONBOARDING VIEW (SIMPLIFICADO PERO COMPLETO) -->
+            <div id="onboarding-view" class="view">
+                <div style="background: white; border-radius: 8px; padding: 2rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                    <div style="margin-bottom: 2rem;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                            <span style="font-weight: 600; color: #0C447C;">Progreso: <span id="current-step">1</span>/12</span>
+                            <span style="font-size: 12px; color: #999;">30-40 minutos</span>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="progress-fill" style="width: 8.33%"></div>
+                        </div>
+                    </div>
+
+                    <div class="step-header">
+                        <div class="step-number" id="step-number">1</div>
+                        <div>
+                            <h3 style="color: #0C447C; margin-bottom: 0.25rem;" id="step-title">Invitación</h3>
+                            <p style="font-size: 13px; color: #666;" id="step-desc">Email + SMS</p>
+                        </div>
+                    </div>
+
+                    <form id="onboarding-form">
+                        <div class="form-section active" data-step="1">
+                            <p style="margin-bottom: 1rem; color: #666;">Bienvenido a Smart Dispatch. Este formulario te registrará como conductor.</p>
+                        </div>
+
+                        <div class="form-section" data-step="2">
+                            <div style="background: #e8f5e9; padding: 1rem; border-radius: 6px; border-left: 4px solid #27500A;">
+                                <h4 style="color: #27500A; margin-bottom: 0.5rem;">✅ Beneficios:</h4>
+                                <p style="font-size: 13px; color: #27500A;">Ofertar viajes • Countdown 60s • Ranking • GPS • Pagos rápidos</p>
+                            </div>
+                        </div>
+
+                        <div class="form-section" data-step="3">
+                            <h4 style="margin-bottom: 1rem; color: #0C447C;">Datos Personales</h4>
+                            <div class="form-row">
+                                <div class="form-group"><label>Nombre *</label><input type="text" id="f_nombre" required></div>
+                                <div class="form-group"><label>Apellido *</label><input type="text" id="f_apellido" required></div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group"><label>DNI *</label><input type="text" id="f_dni" required maxlength="8"></div>
+                                <div class="form-group"><label>Fecha Nac *</label><input type="date" id="f_fecha" required></div>
+                            </div>
+                        </div>
+
+                        <div class="form-section" data-step="4">
+                            <h4 style="margin-bottom: 1rem; color: #0C447C;">Contacto</h4>
+                            <div class="form-group"><label>Teléfono *</label><input type="tel" id="f_tel" required></div>
+                            <div class="form-group"><label>Email *</label><input type="email" id="f_email" required></div>
+                            <div class="form-group"><label>Domicilio *</label><input type="text" id="f_domicilio" required></div>
+                        </div>
+
+                        <div class="form-section" data-step="5">
+                            <h4 style="margin-bottom: 1rem; color: #0C447C;">Licencia</h4>
+                            <div class="form-row">
+                                <div class="form-group"><label>Número *</label><input type="text" id="f_lic_num" required></div>
+                                <div class="form-group"><label>Categoría *</label><select id="f_lic_cat" required><option>C1</option><option>C2</option><option>C3</option><option>E1</option></select></div>
+                            </div>
+                            <div class="form-group"><label>Vencimiento *</label><input type="date" id="f_lic_venc" required></div>
+                        </div>
+
+                        <div class="form-section" data-step="6">
+                            <h4 style="margin-bottom: 1rem; color: #0C447C;">Vehículo</h4>
+                            <div class="form-row">
+                                <div class="form-group"><label>Patente *</label><input type="text" id="f_patente" required></div>
+                                <div class="form-group"><label>Marca *</label><input type="text" id="f_marca" required></div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group"><label>Modelo *</label><input type="text" id="f_modelo" required></div>
+                                <div class="form-group"><label>Año *</label><input type="number" id="f_anio" required></div>
+                            </div>
+                            <div class="form-group"><label>Capacidad (kg) *</label><input type="number" id="f_capacidad" required></div>
+                        </div>
+
+                        <div class="form-section" data-step="7">
+                            <h4 style="margin-bottom: 1rem; color: #0C447C;">Póliza RCO</h4>
+                            <div class="form-group"><label>Número *</label><input type="text" id="f_poliza_num" required></div>
+                            <div class="form-group"><label>Compañía *</label><input type="text" id="f_poliza_cia" required></div>
+                            <div class="form-group"><label>Vencimiento *</label><input type="date" id="f_poliza_venc" required></div>
+                        </div>
+
+                        <div class="form-section" data-step="8">
+                            <h4 style="margin-bottom: 1rem; color: #0C447C;">RTO</h4>
+                            <div class="form-row">
+                                <div class="form-group"><label>Última RTO *</label><input type="date" id="f_rto_fecha" required></div>
+                                <div class="form-group"><label>Próximo Venc *</label><input type="date" id="f_rto_venc" required></div>
+                            </div>
+                            <div class="form-group"><label>Centro RTO *</label><input type="text" id="f_rto_centro" required></div>
+                        </div>
+
+                        <div class="form-section" data-step="9">
+                            <h4 style="margin-bottom: 1rem; color: #0C447C;">Especialidades</h4>
+                            <label style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem;"><input type="checkbox" id="f_peligrosas"> Cargas peligrosas</label>
+                            <label style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem;"><input type="checkbox" id="f_temp"> Temperaturas controladas</label>
+                            <label style="display: flex; gap: 0.5rem;"><input type="checkbox" id="f_alimentos"> Alimentos</label>
+                        </div>
+
+                        <div class="form-section" data-step="10">
+                            <h4 style="margin-bottom: 1rem; color: #0C447C;">Antecedentes</h4>
+                            <label style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem;"><input type="checkbox" id="f_antec_penales" required> Sin antecedentes penales *</label>
+                            <label style="display: flex; gap: 0.5rem;"><input type="checkbox" id="f_sin_multas" required> Sin multas sin pagar *</label>
+                        </div>
+
+                        <div class="form-section" data-step="11">
+                            <h4 style="margin-bottom: 1rem; color: #0C447C;">Datos Opcionales</h4>
+                            <div class="form-group"><label>CBU (opcional)</label><input type="text" id="f_cbu" placeholder="22 dígitos"></div>
+                            <div class="form-group"><label>Alias (opcional)</label><input type="text" id="f_alias"></div>
+                        </div>
+
+                        <div class="form-section" data-step="12">
+                            <h4 style="margin-bottom: 1rem; color: #0C447C;">Confirmación</h4>
+                            <p style="margin-bottom: 1rem; color: #666;">Revisa tus datos y envía para aprobación.</p>
+                            <div style="background: #f3e5f5; padding: 1rem; border-radius: 6px; border-left: 4px solid #7B1FA2;">
+                                <p style="font-size: 13px; color: #4a148c;"><strong>⏱️ Próximos pasos:</strong></p>
+                                <p style="font-size: 12px; color: #4a148c; line-height: 1.6;">1. Validación automática (1-2 hs)<br>2. Revisión manual (24-48 hs)<br>3. Email con resultado</p>
+                            </div>
+                        </div>
+                    </form>
+
+                    <div style="display: flex; gap: 1rem; margin-top: 2rem; justify-content: flex-end;">
+                        <button class="btn secondary" id="prev-btn" onclick="changeStep(-1)" style="display: none;">← Anterior</button>
+                        <button class="btn" id="next-btn" onclick="changeStep(1)">Siguiente →</button>
+                        <button class="btn success" id="submit-btn" onclick="submitOnboarding()" style="display: none;">✓ Enviar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ===== VARIABLES GLOBALES =====
+        let trips = [
+            { id: 1, origen: "Buenos Aires", destino: "Rosario", km: 300, precio: 45000, carga: "Bebidas", urgencia: "Normal" },
+            { id: 2, origen: "CABA", destino: "La Plata", km: 56, precio: 8500, carga: "Electrónica", urgencia: "Urgente" },
+            { id: 3, origen: "Campana", destino: "Zárate", km: 35, precio: 5200, carga: "Alimentos", urgencia: "Normal" },
+            { id: 4, origen: "Flores", destino: "Quilmes", km: 32, precio: 4800, carga: "Construcción", urgencia: "Normal" },
+            { id: 5, origen: "Constitución", destino: "Berazategui", km: 28, precio: 4200, carga: "Logística", urgencia: "Urgente" }
+        ];
+
+        let currentAuction = null;
+        let currentStep = 1;
+        const stepData = [
+            { title: "Invitación", desc: "Email + SMS" },
+            { title: "Landing", desc: "Beneficios" },
+            { title: "Datos Personales", desc: "Información" },
+            { title: "Contacto", desc: "Datos de contacto" },
+            { title: "Licencia", desc: "Documentación" },
+            { title: "Vehículo", desc: "Datos del camión" },
+            { title: "Seguros", desc: "Póliza RCO" },
+            { title: "RTO", desc: "Revisión técnica" },
+            { title: "Especialidades", desc: "Tipos de carga" },
+            { title: "Antecedentes", desc: "Validaciones" },
+            { title: "Opcionales", desc: "Banco y puertos" },
+            { title: "Confirmación", desc: "Resumen y envío" }
+        ];
+
+        // ===== FUNCIONES DE NAVEGACIÓN =====
+        function switchRole(btn, role) {
+            document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+            document.getElementById(role + '-view').classList.add('active');
+            document.querySelectorAll('.role-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            
+            if (role === 'conductor') loadTripsUI();
+            if (role === 'admin') loadAdminUI();
+        }
+
+        function switchAdminTab(btn, tab) {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.getElementById('admin-' + tab).classList.add('active');
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+        }
+
+        // ===== FUNCIONES CONDUCTOR =====
+        function loadTripsUI() {
+            const container = document.getElementById('trips-container');
+            container.innerHTML = trips.map(trip => `
+                <div class="trip-card">
+                    <div class="trip-header">
+                        <div>
+                            <div class="trip-title">🚚 ${trip.origen} → ${trip.destino}</div>
+                            <div class="trip-details">
+                                📦 ${trip.carga} | 📍 ${trip.km} km | ${trip.urgencia}
+                            </div>
+                        </div>
+                        <div class="trip-price">
+                            <div class="trip-price-num">$${trip.precio.toLocaleString()}</div>
+                            <div class="trip-price-km">${trip.km} km</div>
+                        </div>
+                    </div>
+                    <div class="offer-input">
+                        <input type="number" placeholder="Tu oferta en $" value="${trip.precio}" id="offer-${trip.id}">
+                        <button class="btn" onclick="startAuction(${trip.id})">Ofertar 60s</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function startAuction(tripId) {
+            currentAuction = {
+                tripId: tripId,
+                trip: trips.find(t => t.id === tripId),
+                offers: [
+                    { conductor: "Tu oferta", cantidad: parseInt(document.getElementById('offer-' + tripId).value) },
+                    { conductor: "Conductor B", cantidad: 44500 },
+                    { conductor: "Conductor C", cantidad: 44000 },
+                    { conductor: "Conductor D", cantidad: 43500 },
+                    { conductor: "Conductor E", cantidad: 43000 }
+                ],
+                timeLeft: 60
+            };
+            
+            currentAuction.offers.sort((a, b) => b.cantidad - a.cantidad);
+            updateAuctionModal();
+            document.getElementById('auction-modal').classList.add('active');
+            
+            const countdown = setInterval(() => {
+                currentAuction.timeLeft--;
+                document.getElementById('modal-countdown').textContent = currentAuction.timeLeft;
+                
+                if (currentAuction.timeLeft <= 0) {
+                    clearInterval(countdown);
+                    showWinner();
+                }
+            }, 1000);
+        }
+
+        function updateAuctionModal() {
+            const ranking = document.getElementById('modal-ranking');
+            ranking.innerHTML = currentAuction.offers.map((offer, idx) => `
+                <div class="ranking-item" style="background: ${idx === 0 ? '#e8f5e9' : 'white'};">
+                    <div class="ranking-place">#${idx + 1}</div>
+                    <div class="ranking-info">
+                        <div class="ranking-name">${offer.conductor}</div>
+                    </div>
+                    <div class="ranking-offer">$${offer.cantidad.toLocaleString()}</div>
+                </div>
+            `).join('');
+        }
+
+        function showWinner() {
+            const winner = document.getElementById('modal-winner');
+            const details = document.getElementById('modal-winner-details');
+            const gps = document.getElementById('modal-gps');
+            
+            if (currentAuction.offers[0].conductor === 'Tu oferta') {
+                winner.style.display = 'block';
+                details.innerHTML = `
+                    <strong>Ruta:</strong> ${currentAuction.trip.origen} → ${currentAuction.trip.destino}<br>
+                    <strong>Distancia:</strong> ${currentAuction.trip.km} km<br>
+                    <strong>Carga:</strong> ${currentAuction.trip.carga}<br>
+                    <strong>Tu oferta:</strong> $${currentAuction.offers[0].cantidad.toLocaleString()}
+                `;
+                gps.style.display = 'block';
+            } else {
+                winner.innerHTML = '<div class="winner-title">El ganador fue otro conductor</div>';
+                winner.style.display = 'block';
+            }
+        }
+
+        function enableGPS() {
+            alert('🚗 GPS Activado\n\nTu ubicación se está compartiendo con el despachante en tiempo real.\n\nNo olvides iniciar el viaje cuando llegues al origen.');
+        }
+
+        function closeAuctionModal() {
+            document.getElementById('auction-modal').classList.remove('active');
+            currentAuction = null;
+        }
+
+        // ===== FUNCIONES ADMIN =====
+        function loadAdminUI() {
+            // Cargar subastas
+            const subastas = document.getElementById('admin-subastas-container');
+            subastas.innerHTML = trips.slice(0, 3).map((trip, idx) => `
+                <div class="trip-card" style="margin-bottom: 1rem;">
+                    <div class="trip-header">
+                        <div>
+                            <div class="trip-title">🏆 Subasta #${trip.id}</div>
+                            <div class="trip-details">${trip.origen} → ${trip.destino} | ${trip.km} km</div>
+                        </div>
+                        <div style="text-align: right;">
+                            <div style="font-size: 20px; font-weight: 600; color: #27500A;">${8 - idx} ofertas</div>
+                            <div style="font-size: 12px; color: #FF9800; font-weight: 600;">${60 - (idx * 15)}s</div>
+                        </div>
+                    </div>
+                    <button class="btn secondary btn-small" onclick="verDetallesSubasta(${trip.id})" style="width: 100%; margin-top: 1rem;">Ver detalles</button>
+                </div>
+            `).join('');
+
+            // Cargar conductores
+            const conductores = [
+                { nombre: "Juan Pérez", dni: "25845632", tel: "+549112584563", docs: "10/10", status: "Aprobado", viajes: 24 },
+                { nombre: "María González", dni: "32156478", tel: "+549113215647", docs: "10/10", status: "Aprobado", viajes: 18 },
+                { nombre: "Carlos López", dni: "28945632", tel: "+549112894563", docs: "8/10", status: "Pendiente", viajes: 0 },
+                { nombre: "Ana Martínez", dni: "29735641", tel: "+549112973564", docs: "10/10", status: "Aprobado", viajes: 31 },
+                { nombre: "Roberto Díaz", dni: "26847593", tel: "+549112684759", docs: "6/10", status: "Incompleto", viajes: 0 }
+            ];
+
+            const tbody = document.getElementById('conductores-tbody');
+            tbody.innerHTML = conductores.map((c, idx) => `
+                <tr>
+                    <td><strong>${c.nombre}</strong></td>
+                    <td>${c.dni}</td>
+                    <td>${c.tel}</td>
+                    <td>${c.docs}</td>
+                    <td><span class="status-badge ${c.status.toLowerCase()}">${c.status}</span></td>
+                    <td>${c.viajes}</td>
+                    <td>
+                        ${c.status === 'Pendiente' ? `<button class="btn success btn-small" onclick="aprobarConductor(${idx})">✓ Aprobar</button>` : '-'}
+                        ${c.status === 'Incompleto' ? `<button class="btn danger btn-small" onclick="rechazarConductor(${idx})">✗ Rechazar</button>` : '-'}
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function crearViaje() {
+            const origen = document.getElementById('new-origen').value;
+            const destino = document.getElementById('new-destino').value;
+            const km = parseInt(document.getElementById('new-km').value);
+            const precio = parseInt(document.getElementById('new-precio').value);
+            const carga = document.getElementById('new-carga').value;
+            const urgencia = document.getElementById('new-urgencia').value;
+
+            if (!origen || !destino || !km || !precio || !carga) {
+                alert('Completa todos los campos');
+                return;
+            }
+
+            trips.push({
+                id: trips.length + 1,
+                origen, destino, km, precio, carga, urgencia
+            });
+
+            alert('✅ Viaje creado correctamente');
+            document.getElementById('new-origen').value = '';
+            document.getElementById('new-destino').value = '';
+            document.getElementById('new-km').value = '';
+            document.getElementById('new-precio').value = '';
+            document.getElementById('new-carga').value = '';
+            loadAdminUI();
+        }
+
+        function verDetallesSubasta(tripId) {
+            const trip = trips.find(t => t.id === tripId);
+            alert(`📊 Detalles Subasta #${tripId}\n\n${trip.origen} → ${trip.destino}\nDistancia: ${trip.km} km\nPrecio base: $${trip.precio}\nCarga: ${trip.carga}\nUrgencia: ${trip.urgencia}\n\nOfertas: 8 conductores\nTiempo: 45 segundos restantes`);
+        }
+
+        function aprobarConductor(idx) {
+            alert('✅ Conductor aprobado correctamente');
+            loadAdminUI();
+        }
+
+        function rechazarConductor(idx) {
+            alert('❌ Conductor rechazado');
+            loadAdminUI();
+        }
+
+        // ===== FUNCIONES ONBOARDING =====
+        function updateStepUI() {
+            document.getElementById('step-number').textContent = currentStep;
+            document.getElementById('current-step').textContent = currentStep;
+            document.getElementById('step-title').textContent = stepData[currentStep - 1].title;
+            document.getElementById('step-desc').textContent = stepData[currentStep - 1].desc;
+            document.getElementById('progress-fill').style.width = (currentStep / 12 * 100) + '%';
+
+            document.querySelectorAll('.form-section').forEach(s => s.classList.remove('active'));
+            document.querySelector(`[data-step="${currentStep}"]`).classList.add('active');
+
+            document.getElementById('prev-btn').style.display = currentStep > 1 ? 'block' : 'none';
+            document.getElementById('next-btn').style.display = currentStep < 12 ? 'block' : 'none';
+            document.getElementById('submit-btn').style.display = currentStep === 12 ? 'block' : 'none';
+        }
+
+        function changeStep(direction) {
+            if (direction === 1 && currentStep < 12) currentStep++;
+            else if (direction === -1 && currentStep > 1) currentStep--;
+            updateStepUI();
+        }
+
+        function submitOnboarding() {
+            alert('✅ Registro enviado para aprobación\n\nRecibirás un email en 48-72 horas');
+            currentStep = 1;
+            updateStepUI();
+            document.querySelectorAll('input, select').forEach(el => el.value = '');
+        }
+
+        // ===== INICIALIZACIÓN =====
+        loadTripsUI();
+        updateStepUI();
+    </script>
+</body>
+</html>
