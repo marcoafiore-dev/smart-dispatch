@@ -1,0 +1,930 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Dispatch v7 - MVP Completo</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f5; }
+        
+        .container { max-width: 1400px; margin: 0 auto; }
+        
+        .header { background: linear-gradient(135deg, #185FA5 0%, #0C447C 100%); color: white; padding: 1.5rem 2rem; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .header h1 { font-size: 24px; margin-bottom: 0.5rem; }
+        .header p { font-size: 13px; opacity: 0.9; }
+        
+        .role-selector { background: white; padding: 1.5rem 2rem; border-bottom: 1px solid #ddd; display: flex; gap: 1rem; flex-wrap: wrap; }
+        .role-btn { padding: 10px 20px; border: 2px solid #ddd; background: white; border-radius: 6px; cursor: pointer; font-weight: 500; transition: all 0.2s; }
+        .role-btn.active { border-color: #0C447C; background: #0C447C; color: white; }
+        
+        .content { padding: 2rem; }
+        .view { display: none; }
+        .view.active { display: block; }
+        
+        .tabs { background: white; border-bottom: 1px solid #ddd; margin-bottom: 2rem; display: flex; border-radius: 8px 8px 0 0; overflow: hidden; }
+        .tab-btn { padding: 1rem 1.5rem; border: none; background: #f9f9f9; cursor: pointer; font-weight: 500; font-size: 14px; border-bottom: 3px solid transparent; transition: all 0.2s; }
+        .tab-btn.active { background: white; border-bottom-color: #0C447C; color: #0C447C; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        
+        .admin-header { background: linear-gradient(135deg, #185FA5 0%, #0C447C 100%); color: white; padding: 2rem; border-radius: 8px; margin-bottom: 2rem; }
+        .admin-header h2 { font-size: 20px; margin-bottom: 0.5rem; }
+        
+        .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+        .kpi-card { background: white; padding: 1.5rem; border-radius: 8px; border: 1px solid #ddd; text-align: center; }
+        .kpi-label { font-size: 12px; color: #666; text-transform: uppercase; margin-bottom: 0.5rem; }
+        .kpi-value { font-size: 32px; font-weight: 600; color: #0C447C; }
+        
+        /* PANTALLAS CONDUCTOR */
+        .screen-title { color: #0C447C; font-size: 20px; font-weight: 600; margin-bottom: 1.5rem; }
+        
+        .trip-card { background: #f9fafb; padding: 1.5rem; border-radius: 8px; margin-bottom: 1rem; border-left: 4px solid #0C447C; cursor: pointer; transition: all 0.2s; }
+        .trip-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.1); transform: translateY(-2px); }
+        .trip-header { display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem; }
+        .trip-title { font-weight: 600; color: #0C447C; margin-bottom: 0.5rem; }
+        .trip-details { font-size: 13px; color: #666; line-height: 1.6; }
+        .trip-price { text-align: right; }
+        .trip-price-num { font-size: 24px; font-weight: 600; color: #27500A; }
+        .trip-price-km { font-size: 13px; color: #999; }
+        
+        .detail-section { background: white; padding: 1.5rem; border-radius: 8px; margin-bottom: 1.5rem; }
+        .detail-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; }
+        .detail-item { padding: 1rem; background: #f9fafb; border-radius: 6px; }
+        .detail-label { font-size: 12px; color: #999; text-transform: uppercase; margin-bottom: 0.25rem; }
+        .detail-value { font-size: 16px; font-weight: 600; color: #0C447C; }
+        
+        .compatibility-box { background: #e8f5e9; padding: 1rem; border-radius: 6px; border-left: 4px solid #27500A; margin-bottom: 1rem; }
+        .compatibility-title { color: #27500A; font-weight: 600; margin-bottom: 0.5rem; }
+        .compatibility-item { display: flex; align-items: center; gap: 0.5rem; font-size: 14px; color: #27500A; margin-bottom: 0.5rem; }
+        .compatibility-item:last-child { margin-bottom: 0; }
+        .checkmark { color: #27500A; font-weight: bold; }
+        
+        .score-display { background: linear-gradient(135deg, #185FA5 0%, #0C447C 100%); color: white; padding: 1.5rem; border-radius: 8px; text-align: center; margin-bottom: 1.5rem; }
+        .score-label { font-size: 13px; opacity: 0.9; }
+        .score-value { font-size: 48px; font-weight: 600; margin: 0.5rem 0; }
+        .score-desc { font-size: 13px; opacity: 0.9; }
+        
+        .offer-section { background: white; padding: 1.5rem; border-radius: 8px; margin-bottom: 1.5rem; }
+        .offer-label { font-size: 12px; color: #999; text-transform: uppercase; margin-bottom: 0.5rem; }
+        .offer-input-group { display: grid; grid-template-columns: 1fr auto; gap: 1rem; }
+        .offer-input-group input { padding: 12px; border: 2px solid #ddd; border-radius: 6px; font-size: 16px; }
+        .offer-input-group input:focus { outline: none; border-color: #0C447C; }
+        
+        .status-banner { background: #d4edda; border: 1px solid #27500A; border-radius: 8px; padding: 1.5rem; margin-bottom: 1.5rem; text-align: center; }
+        .status-banner.success { background: #d4edda; border-color: #27500A; }
+        .status-banner.warning { background: #fff3cd; border-color: #FF9800; }
+        .status-banner h3 { color: #155724; margin-bottom: 0.5rem; }
+        .status-banner p { color: #155724; font-size: 14px; }
+        
+        .countdown-display { background: #fff3cd; padding: 2rem; border-radius: 8px; text-align: center; margin-bottom: 1.5rem; border-left: 4px solid #FF9800; }
+        .countdown-num { font-size: 64px; font-weight: 600; color: #FF9800; font-family: 'Courier New', monospace; }
+        .countdown-label { font-size: 14px; color: #666; margin-top: 0.5rem; }
+        
+        .ranking-section { background: white; padding: 1.5rem; border-radius: 8px; margin-bottom: 1.5rem; border: 1px solid #ddd; }
+        .ranking-title { color: #0C447C; font-weight: 600; margin-bottom: 1rem; }
+        .ranking-item { display: flex; justify-content: space-between; padding: 1rem; border-bottom: 1px solid #eee; align-items: center; }
+        .ranking-item:last-child { border-bottom: none; }
+        .ranking-item.first { background: #e8f5e9; border-radius: 6px; }
+        .ranking-position { font-weight: 600; color: #0C447C; width: 50px; text-align: center; }
+        .ranking-conductor { flex: 1; }
+        .ranking-offer { color: #27500A; font-weight: 600; }
+        
+        .winner-section { background: #c8e6c9; padding: 2rem; border-radius: 8px; border: 3px solid #27500A; text-align: center; margin-bottom: 1.5rem; }
+        .winner-icon { font-size: 64px; margin-bottom: 1rem; }
+        .winner-title { color: #27500A; font-size: 24px; font-weight: 600; margin-bottom: 0.5rem; }
+        .winner-subtitle { color: #155724; font-size: 16px; margin-bottom: 1rem; }
+        .winner-details { background: white; padding: 1rem; border-radius: 6px; text-align: left; margin-top: 1rem; }
+        .winner-detail-item { display: flex; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid #eee; }
+        .winner-detail-item:last-child { border-bottom: none; }
+        
+        .load-data-section { background: white; padding: 1.5rem; border-radius: 8px; margin-bottom: 1.5rem; }
+        .load-data-title { color: #0C447C; font-weight: 600; margin-bottom: 1rem; font-size: 16px; }
+        .load-data-item { background: #f9fafb; padding: 1rem; border-radius: 6px; margin-bottom: 1rem; border-left: 4px solid #185FA5; }
+        .load-data-label { font-size: 12px; color: #999; text-transform: uppercase; margin-bottom: 0.25rem; }
+        .load-data-value { font-size: 14px; color: #333; line-height: 1.6; }
+        
+        .form-group { margin-bottom: 1rem; }
+        .form-group label { display: block; margin-bottom: 0.5rem; font-weight: 500; font-size: 14px; }
+        .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; }
+        .form-group input:focus, .form-group select:focus { outline: none; border-color: #0C447C; box-shadow: 0 0 0 3px rgba(12, 68, 124, 0.1); }
+        
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+        .form-row.full { grid-template-columns: 1fr; }
+        
+        .btn { padding: 12px 24px; background: #0C447C; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; transition: all 0.2s; font-size: 14px; }
+        .btn:hover { opacity: 0.9; transform: translateY(-2px); }
+        .btn.secondary { background: #f0f0f0; color: #333; border: 1px solid #ddd; }
+        .btn.success { background: #27500A; }
+        .btn.danger { background: #d32f2f; }
+        .btn.small { padding: 6px 12px; font-size: 12px; }
+        .btn.full-width { width: 100%; }
+        
+        .nav-buttons { display: flex; gap: 1rem; margin-top: 2rem; }
+        .nav-buttons .btn { flex: 1; }
+        
+        .table-responsive { overflow-x: auto; }
+        .table { width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; }
+        .table thead { background: #f9f9f9; }
+        .table th { padding: 1rem; text-align: left; font-weight: 600; font-size: 13px; color: #0C447C; text-transform: uppercase; }
+        .table td { padding: 1rem; border-bottom: 1px solid #eee; font-size: 13px; }
+        .table tbody tr:hover { background: #f9f9f9; }
+        
+        .status-badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; text-transform: uppercase; }
+        .status-badge.pending { background: #fff3cd; color: #856404; }
+        .status-badge.approved { background: #d4edda; color: #155724; }
+        .status-badge.rejected { background: #f8d7da; color: #721c24; }
+        
+        .progress-bar { background: #ddd; height: 4px; border-radius: 4px; margin-bottom: 2rem; overflow: hidden; }
+        .progress-fill { background: linear-gradient(90deg, #185FA5, #0C447C); height: 100%; transition: width 0.3s ease; }
+        
+        .step-header { display: flex; align-items: center; gap: 1rem; margin-bottom: 2rem; }
+        .step-number { background: #0C447C; color: white; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; }
+        
+        .rating-display { text-align: center; margin-bottom: 1rem; }
+        .rating-stars { font-size: 32px; margin: 0.5rem 0; }
+        .rating-label { color: #666; font-size: 13px; }
+        
+        @media (max-width: 768px) {
+            .form-row { grid-template-columns: 1fr; }
+            .trip-header { flex-direction: column; }
+            .offer-input-group { grid-template-columns: 1fr; }
+            .detail-row { grid-template-columns: 1fr; }
+            .nav-buttons { flex-direction: column; }
+            .score-value { font-size: 36px; }
+            .countdown-num { font-size: 48px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="container">
+            <h1>🚚 Smart Dispatch v7 - MVP Completo</h1>
+            <p>Plataforma de Subastas en Tiempo Real + Onboarding</p>
+        </div>
+    </div>
+
+    <div class="role-selector">
+        <div class="container" style="width: 100%; padding: 0; display: flex; gap: 1rem; flex-wrap: wrap;">
+            <button class="role-btn active" onclick="switchRole(this, 'conductor')">👤 Conductor</button>
+            <button class="role-btn" onclick="switchRole(this, 'admin')">⚙️ Admin Logant</button>
+            <button class="role-btn" onclick="switchRole(this, 'onboarding')">📝 Onboarding</button>
+        </div>
+    </div>
+
+    <div class="content">
+        <div class="container">
+            
+            <!-- ============ CONDUCTOR VIEW (FLUJO COMPLETO 6 PANTALLAS) ============ -->
+            <div id="conductor-view" class="view active">
+                
+                <!-- PANTALLA 1: LISTADO DE VIAJES -->
+                <div id="screen-listado" class="conductor-screen">
+                    <h2 class="screen-title">📱 Viajes Disponibles</h2>
+                    <p style="color: #666; margin-bottom: 1.5rem; font-size: 14px;">Elige un viaje y haz una oferta competitiva</p>
+                    <div id="trips-container"></div>
+                </div>
+
+                <!-- PANTALLA 2: DETALLE VIAJE -->
+                <div id="screen-detalle" class="conductor-screen" style="display: none;">
+                    <div style="margin-bottom: 1.5rem;">
+                        <button class="btn secondary" onclick="goToScreen('listado')">← Volver al listado</button>
+                    </div>
+                    
+                    <h2 class="screen-title">📋 Detalle del Viaje</h2>
+                    
+                    <div class="detail-section">
+                        <div class="detail-row">
+                            <div class="detail-item">
+                                <div class="detail-label">Origen</div>
+                                <div class="detail-value" id="detail-origen">Buenos Aires</div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">Destino</div>
+                                <div class="detail-value" id="detail-destino">Rosario</div>
+                            </div>
+                        </div>
+                        
+                        <div class="detail-row">
+                            <div class="detail-item">
+                                <div class="detail-label">Distancia</div>
+                                <div class="detail-value" id="detail-km">300 km</div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">Tipo de Carga</div>
+                                <div class="detail-value" id="detail-carga">Bebidas</div>
+                            </div>
+                        </div>
+
+                        <div class="detail-row">
+                            <div class="detail-item">
+                                <div class="detail-label">Toneladas</div>
+                                <div class="detail-value" id="detail-toneladas">8 tn</div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">Urgencia</div>
+                                <div class="detail-value" id="detail-urgencia">Normal</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="compatibility-box">
+                        <div class="compatibility-title">✅ Compatibilidad con tu Perfil</div>
+                        <div class="compatibility-item">
+                            <span class="checkmark">✓</span> Licencia C2 válida
+                        </div>
+                        <div class="compatibility-item">
+                            <span class="checkmark">✓</span> Capacidad de carga: 10 tn
+                        </div>
+                        <div class="compatibility-item">
+                            <span class="checkmark">✓</span> Especialidad en bebidas
+                        </div>
+                        <div class="compatibility-item">
+                            <span class="checkmark">✓</span> Seguros al día
+                        </div>
+                        <div class="compatibility-item">
+                            <span class="checkmark">✓</span> Sin infracciones
+                        </div>
+                    </div>
+
+                    <div class="score-display">
+                        <div class="score-label">SCORE DE COMPATIBILIDAD</div>
+                        <div class="score-value">95%</div>
+                        <div class="score-desc">Tienes excelentes probabilidades de ganar</div>
+                    </div>
+
+                    <div class="offer-section">
+                        <div class="offer-label">Tu Oferta ($)</div>
+                        <div class="offer-input-group">
+                            <input type="number" id="offer-amount" placeholder="45000" value="45000">
+                            <button class="btn success" onclick="enviarOferta()">Hacer Oferta →</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PANTALLA 3: OFERTA ENVIADA -->
+                <div id="screen-oferta-enviada" class="conductor-screen" style="display: none;">
+                    <h2 class="screen-title">✅ Tu Oferta fue Enviada</h2>
+                    
+                    <div class="status-banner success">
+                        <h3>🎉 Oferta Registrada</h3>
+                        <p id="oferta-enviada-texto">Tu oferta de $45,000 está en competencia</p>
+                    </div>
+
+                    <div class="ranking-section">
+                        <div class="ranking-title">🏅 Ranking en Vivo (Ofertas Recibidas)</div>
+                        <div id="ranking-container"></div>
+                    </div>
+
+                    <div class="countdown-display">
+                        <p style="color: #666; margin-bottom: 1rem;">Subasta finaliza en:</p>
+                        <div class="countdown-num" id="countdown-oferta">60</div>
+                        <div class="countdown-label">segundos</div>
+                    </div>
+
+                    <div class="nav-buttons">
+                        <button class="btn secondary" onclick="goToScreen('detalle')">← Atrás</button>
+                        <button class="btn" onclick="verOfertasVivo()">Ver Ofertas en Vivo →</button>
+                    </div>
+                </div>
+
+                <!-- PANTALLA 4: ESPERANDO RESULTADO -->
+                <div id="screen-esperando" class="conductor-screen" style="display: none;">
+                    <h2 class="screen-title">⏳ Esperando Resultado</h2>
+                    
+                    <div class="rating-display">
+                        <div class="rating-label">Tu Rating</div>
+                        <div class="rating-stars">⭐⭐⭐⭐⭐</div>
+                        <div style="font-weight: 600; color: #0C447C;">4.9 / 5.0</div>
+                    </div>
+
+                    <div class="countdown-display">
+                        <p style="color: #666; margin-bottom: 1rem;">Tiempo para resultado:</p>
+                        <div class="countdown-num" id="countdown-esperando">45</div>
+                        <div class="countdown-label">segundos</div>
+                    </div>
+
+                    <div class="ranking-section">
+                        <div class="ranking-title">🏆 Ranking Actualizado</div>
+                        <div id="ranking-esperando-container"></div>
+                    </div>
+
+                    <div class="nav-buttons">
+                        <button class="btn secondary" onclick="goToScreen('oferta-enviada')">← Atrás</button>
+                        <button class="btn" onclick="mostrarResultado()">Ver Resultado →</button>
+                    </div>
+                </div>
+
+                <!-- PANTALLA 5: GANASTE -->
+                <div id="screen-ganaste" class="conductor-screen" style="display: none;">
+                    <h2 class="screen-title">🎉 ¡GANASTE LA SUBASTA!</h2>
+                    
+                    <div class="winner-section">
+                        <div class="winner-icon">🏆</div>
+                        <div class="winner-title">¡FELICIDADES!</div>
+                        <div class="winner-subtitle">Tu oferta fue la más competitiva</div>
+                        <div class="winner-details">
+                            <div class="winner-detail-item">
+                                <span>Ruta:</span>
+                                <strong id="winner-ruta">Buenos Aires → Rosario</strong>
+                            </div>
+                            <div class="winner-detail-item">
+                                <span>Distancia:</span>
+                                <strong id="winner-km">300 km</strong>
+                            </div>
+                            <div class="winner-detail-item">
+                                <span>Tu Oferta:</span>
+                                <strong id="winner-oferta" style="color: #27500A;">$45,000</strong>
+                            </div>
+                            <div class="winner-detail-item">
+                                <span>Viaje Asignado:</span>
+                                <strong style="color: #27500A;">$820 / km</strong>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="nav-buttons">
+                        <button class="btn secondary" onclick="goToScreen('esperando')">← Atrás</button>
+                        <button class="btn success" onclick="goToScreen('datos-carga')">Ver Datos de Carga →</button>
+                    </div>
+                </div>
+
+                <!-- PANTALLA 6: DATOS DE CARGA -->
+                <div id="screen-datos-carga" class="conductor-screen" style="display: none;">
+                    <h2 class="screen-title">📦 Datos de Carga</h2>
+                    
+                    <div class="load-data-section">
+                        <div class="load-data-title">📍 Recogida</div>
+                        <div class="load-data-item">
+                            <div class="load-data-label">Dirección</div>
+                            <div class="load-data-value">Av. Santa Fe 1234, CABA, Argentina</div>
+                        </div>
+                        <div class="load-data-item">
+                            <div class="load-data-label">Teléfono</div>
+                            <div class="load-data-value">+54 11 4567-8901</div>
+                        </div>
+                        <div class="load-data-item">
+                            <div class="load-data-label">Horario de Recogida</div>
+                            <div class="load-data-value">08:00 - 10:00 Mañana</div>
+                        </div>
+                    </div>
+
+                    <div class="load-data-section">
+                        <div class="load-data-title">🏪 Entrega</div>
+                        <div class="load-data-item">
+                            <div class="load-data-label">Dirección</div>
+                            <div class="load-data-value">Calle 7 No. 456, La Plata, Argentina</div>
+                        </div>
+                        <div class="load-data-item">
+                            <div class="load-data-label">Teléfono</div>
+                            <div class="load-data-value">+54 221 987-6543</div>
+                        </div>
+                        <div class="load-data-item">
+                            <div class="load-data-label">Horario Entrega</div>
+                            <div class="load-data-value">14:00 - 16:00 Hoy</div>
+                        </div>
+                    </div>
+
+                    <div class="load-data-section">
+                        <div class="load-data-title">📋 Detalles de la Carga</div>
+                        <div class="load-data-item">
+                            <div class="load-data-label">Tipo</div>
+                            <div class="load-data-value">Alimentos 0-4°C (Refrigerado)</div>
+                        </div>
+                        <div class="load-data-item">
+                            <div class="load-data-label">Peso</div>
+                            <div class="load-data-value">8 toneladas</div>
+                        </div>
+                        <div class="load-data-item">
+                            <div class="load-data-label">Documentación</div>
+                            <div class="load-data-value">Factura + Albarán</div>
+                        </div>
+                        <div class="load-data-item">
+                            <div class="load-data-label">Observaciones</div>
+                            <div class="load-data-value">Manejo cuidadoso. Verificar temperatura cada 2 horas</div>
+                        </div>
+                    </div>
+
+                    <div class="nav-buttons">
+                        <button class="btn secondary" onclick="goToScreen('ganaste')">← Atrás</button>
+                        <button class="btn success" onclick="empezarViaje()">Empezar Viaje →</button>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- ============ ADMIN VIEW ============ -->
+            <div id="admin-view" class="view">
+                <div class="tabs">
+                    <button class="tab-btn active" onclick="switchAdminTab(this, 'dashboard')">📊 Dashboard</button>
+                    <button class="tab-btn" onclick="switchAdminTab(this, 'crear-viaje')">➕ Crear Viaje</button>
+                    <button class="tab-btn" onclick="switchAdminTab(this, 'subastas')">🏆 Subastas Activas</button>
+                    <button class="tab-btn" onclick="switchAdminTab(this, 'conductores')">👥 Conductores</button>
+                </div>
+
+                <!-- Dashboard -->
+                <div id="admin-dashboard" class="tab-content active">
+                    <div class="admin-header">
+                        <h2>Panel de Control</h2>
+                        <p>Gestiona subastas, conductores y viajes</p>
+                    </div>
+                    <div class="kpi-grid">
+                        <div class="kpi-card">
+                            <div class="kpi-label">Subastas Activas</div>
+                            <div class="kpi-value" id="kpi-subastas">5</div>
+                        </div>
+                        <div class="kpi-card">
+                            <div class="kpi-label">Ofertas Recibidas</div>
+                            <div class="kpi-value" id="kpi-ofertas">23</div>
+                        </div>
+                        <div class="kpi-card">
+                            <div class="kpi-label">Viajes en Curso</div>
+                            <div class="kpi-value" id="kpi-viajes">8</div>
+                        </div>
+                        <div class="kpi-card">
+                            <div class="kpi-label">Conductores Activos</div>
+                            <div class="kpi-value" id="kpi-conductores">42</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Crear Viaje -->
+                <div id="admin-crear-viaje" class="tab-content">
+                    <div style="background: white; padding: 2rem; border-radius: 8px;">
+                        <h3 style="color: #0C447C; margin-bottom: 1.5rem;">➕ Crear Nuevo Viaje</h3>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Origen <span style="color: red;">*</span></label>
+                                <input type="text" id="new-origen" placeholder="Ej: Buenos Aires">
+                            </div>
+                            <div class="form-group">
+                                <label>Destino <span style="color: red;">*</span></label>
+                                <input type="text" id="new-destino" placeholder="Ej: Rosario">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Distancia (km) <span style="color: red;">*</span></label>
+                                <input type="number" id="new-km" placeholder="300">
+                            </div>
+                            <div class="form-group">
+                                <label>Precio Base ($) <span style="color: red;">*</span></label>
+                                <input type="number" id="new-precio" placeholder="45000">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Tipo de Carga <span style="color: red;">*</span></label>
+                                <input type="text" id="new-carga" placeholder="Ej: Bebidas">
+                            </div>
+                            <div class="form-group">
+                                <label>Urgencia <span style="color: red;">*</span></label>
+                                <select id="new-urgencia">
+                                    <option value="Normal">Normal</option>
+                                    <option value="Urgente">Urgente</option>
+                                    <option value="Muy Urgente">Muy Urgente</option>
+                                </select>
+                            </div>
+                        </div>
+                        <button class="btn success" style="width: 100%; margin-top: 1.5rem;" onclick="crearViaje()">✓ Crear Viaje</button>
+                    </div>
+                </div>
+
+                <!-- Subastas Activas -->
+                <div id="admin-subastas" class="tab-content">
+                    <h3 style="margin-bottom: 1.5rem; color: #0C447C;">🏆 Subastas en Tiempo Real</h3>
+                    <div id="admin-subastas-container"></div>
+                </div>
+
+                <!-- Conductores -->
+                <div id="admin-conductores" class="tab-content">
+                    <h3 style="margin-bottom: 1.5rem; color: #0C447C;">👥 Gestión de Conductores</h3>
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Nombre</th>
+                                    <th>DNI</th>
+                                    <th>Teléfono</th>
+                                    <th>Documentación</th>
+                                    <th>Estado</th>
+                                    <th>Viajes</th>
+                                    <th>Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody id="conductores-tbody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ============ ONBOARDING VIEW ============ -->
+            <div id="onboarding-view" class="view">
+                <div style="background: white; border-radius: 8px; padding: 2rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                    <div style="margin-bottom: 2rem;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                            <span style="font-weight: 600; color: #0C447C;">Progreso: <span id="current-step">1</span>/12</span>
+                            <span style="font-size: 12px; color: #999;">30-40 minutos</span>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="progress-fill" style="width: 8.33%"></div>
+                        </div>
+                    </div>
+
+                    <div class="step-header">
+                        <div class="step-number" id="step-number">1</div>
+                        <div>
+                            <h3 style="color: #0C447C; margin-bottom: 0.25rem;" id="step-title">Invitación</h3>
+                            <p style="font-size: 13px; color: #666;" id="step-desc">Email + SMS</p>
+                        </div>
+                    </div>
+
+                    <form id="onboarding-form">
+                        <div class="form-section active" data-step="1">
+                            <p style="margin-bottom: 1rem; color: #666;">Bienvenido a Smart Dispatch. Este formulario te registrará como conductor.</p>
+                        </div>
+
+                        <div class="form-section" data-step="2">
+                            <div style="background: #e8f5e9; padding: 1rem; border-radius: 6px; border-left: 4px solid #27500A;">
+                                <h4 style="color: #27500A; margin-bottom: 0.5rem;">✅ Beneficios:</h4>
+                                <p style="font-size: 13px; color: #27500A;">Ofertar viajes • Countdown 60s • Ranking • GPS • Pagos rápidos</p>
+                            </div>
+                        </div>
+
+                        <div class="form-section" data-step="3">
+                            <h4 style="margin-bottom: 1rem; color: #0C447C;">Datos Personales</h4>
+                            <div class="form-row">
+                                <div class="form-group"><label>Nombre *</label><input type="text" id="f_nombre" required></div>
+                                <div class="form-group"><label>Apellido *</label><input type="text" id="f_apellido" required></div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group"><label>DNI *</label><input type="text" id="f_dni" required maxlength="8"></div>
+                                <div class="form-group"><label>Fecha Nac *</label><input type="date" id="f_fecha" required></div>
+                            </div>
+                        </div>
+
+                        <div class="form-section" data-step="4">
+                            <h4 style="margin-bottom: 1rem; color: #0C447C;">Contacto</h4>
+                            <div class="form-group"><label>Teléfono *</label><input type="tel" id="f_tel" required></div>
+                            <div class="form-group"><label>Email *</label><input type="email" id="f_email" required></div>
+                            <div class="form-group"><label>Domicilio *</label><input type="text" id="f_domicilio" required></div>
+                        </div>
+
+                        <div class="form-section" data-step="5">
+                            <h4 style="margin-bottom: 1rem; color: #0C447C;">Licencia</h4>
+                            <div class="form-row">
+                                <div class="form-group"><label>Número *</label><input type="text" id="f_lic_num" required></div>
+                                <div class="form-group"><label>Categoría *</label><select id="f_lic_cat" required><option>C1</option><option>C2</option><option>C3</option><option>E1</option></select></div>
+                            </div>
+                            <div class="form-group"><label>Vencimiento *</label><input type="date" id="f_lic_venc" required></div>
+                        </div>
+
+                        <div class="form-section" data-step="6">
+                            <h4 style="margin-bottom: 1rem; color: #0C447C;">Vehículo</h4>
+                            <div class="form-row">
+                                <div class="form-group"><label>Patente *</label><input type="text" id="f_patente" required></div>
+                                <div class="form-group"><label>Marca *</label><input type="text" id="f_marca" required></div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group"><label>Modelo *</label><input type="text" id="f_modelo" required></div>
+                                <div class="form-group"><label>Año *</label><input type="number" id="f_anio" required></div>
+                            </div>
+                            <div class="form-group"><label>Capacidad (kg) *</label><input type="number" id="f_capacidad" required></div>
+                        </div>
+
+                        <div class="form-section" data-step="7">
+                            <h4 style="margin-bottom: 1rem; color: #0C447C;">Póliza RCO</h4>
+                            <div class="form-group"><label>Número *</label><input type="text" id="f_poliza_num" required></div>
+                            <div class="form-group"><label>Compañía *</label><input type="text" id="f_poliza_cia" required></div>
+                            <div class="form-group"><label>Vencimiento *</label><input type="date" id="f_poliza_venc" required></div>
+                        </div>
+
+                        <div class="form-section" data-step="8">
+                            <h4 style="margin-bottom: 1rem; color: #0C447C;">RTO</h4>
+                            <div class="form-row">
+                                <div class="form-group"><label>Última RTO *</label><input type="date" id="f_rto_fecha" required></div>
+                                <div class="form-group"><label>Próximo Venc *</label><input type="date" id="f_rto_venc" required></div>
+                            </div>
+                            <div class="form-group"><label>Centro RTO *</label><input type="text" id="f_rto_centro" required></div>
+                        </div>
+
+                        <div class="form-section" data-step="9">
+                            <h4 style="margin-bottom: 1rem; color: #0C447C;">Especialidades</h4>
+                            <label style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem;"><input type="checkbox" id="f_peligrosas"> Cargas peligrosas</label>
+                            <label style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem;"><input type="checkbox" id="f_temp"> Temperaturas controladas</label>
+                            <label style="display: flex; gap: 0.5rem;"><input type="checkbox" id="f_alimentos"> Alimentos</label>
+                        </div>
+
+                        <div class="form-section" data-step="10">
+                            <h4 style="margin-bottom: 1rem; color: #0C447C;">Antecedentes</h4>
+                            <label style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem;"><input type="checkbox" id="f_antec_penales" required> Sin antecedentes penales *</label>
+                            <label style="display: flex; gap: 0.5rem;"><input type="checkbox" id="f_sin_multas" required> Sin multas sin pagar *</label>
+                        </div>
+
+                        <div class="form-section" data-step="11">
+                            <h4 style="margin-bottom: 1rem; color: #0C447C;">Datos Opcionales</h4>
+                            <div class="form-group"><label>CBU (opcional)</label><input type="text" id="f_cbu" placeholder="22 dígitos"></div>
+                            <div class="form-group"><label>Alias (opcional)</label><input type="text" id="f_alias"></div>
+                        </div>
+
+                        <div class="form-section" data-step="12">
+                            <h4 style="margin-bottom: 1rem; color: #0C447C;">Confirmación</h4>
+                            <p style="margin-bottom: 1rem; color: #666;">Revisa tus datos y envía para aprobación.</p>
+                            <div style="background: #f3e5f5; padding: 1rem; border-radius: 6px; border-left: 4px solid #7B1FA2;">
+                                <p style="font-size: 13px; color: #4a148c;"><strong>⏱️ Próximos pasos:</strong></p>
+                                <p style="font-size: 12px; color: #4a148c; line-height: 1.6;">1. Validación automática (1-2 hs)<br>2. Revisión manual (24-48 hs)<br>3. Email con resultado</p>
+                            </div>
+                        </div>
+                    </form>
+
+                    <div style="display: flex; gap: 1rem; margin-top: 2rem; justify-content: flex-end;">
+                        <button class="btn secondary" id="prev-btn" onclick="changeStep(-1)" style="display: none;">← Anterior</button>
+                        <button class="btn" id="next-btn" onclick="changeStep(1)">Siguiente →</button>
+                        <button class="btn success" id="submit-btn" onclick="submitOnboarding()" style="display: none;">✓ Enviar</button>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        // ===== VARIABLES GLOBALES =====
+        let trips = [
+            { id: 1, origen: "Buenos Aires", destino: "Rosario", km: 300, precio: 45000, carga: "Bebidas", toneladas: 8, urgencia: "Normal" },
+            { id: 2, origen: "CABA", destino: "La Plata", km: 56, precio: 8500, carga: "Electrónica", toneladas: 3, urgencia: "Urgente" },
+            { id: 3, origen: "Campana", destino: "Zárate", km: 35, precio: 5200, carga: "Alimentos", toneladas: 4, urgencia: "Normal" }
+        ];
+
+        let currentTrip = null;
+        let currentStep = 1;
+
+        const stepData = [
+            { title: "Invitación", desc: "Email + SMS" },
+            { title: "Landing", desc: "Beneficios" },
+            { title: "Datos Personales", desc: "Información" },
+            { title: "Contacto", desc: "Datos de contacto" },
+            { title: "Licencia", desc: "Documentación" },
+            { title: "Vehículo", desc: "Datos del camión" },
+            { title: "Seguros", desc: "Póliza RCO" },
+            { title: "RTO", desc: "Revisión técnica" },
+            { title: "Especialidades", desc: "Tipos de carga" },
+            { title: "Antecedentes", desc: "Validaciones" },
+            { title: "Opcionales", desc: "Banco y puertos" },
+            { title: "Confirmación", desc: "Resumen y envío" }
+        ];
+
+        // ===== FUNCIONES CONDUCTOR =====
+        function goToScreen(screenName) {
+            document.querySelectorAll('.conductor-screen').forEach(s => s.style.display = 'none');
+            document.getElementById('screen-' + screenName).style.display = 'block';
+            window.scrollTo(0, 0);
+        }
+
+        function loadTripsUI() {
+            const container = document.getElementById('trips-container');
+            container.innerHTML = trips.map(trip => `
+                <div class="trip-card" onclick="verDetalle(${trip.id})">
+                    <div class="trip-header">
+                        <div>
+                            <div class="trip-title">🚚 ${trip.origen} → ${trip.destino}</div>
+                            <div class="trip-details">
+                                📦 ${trip.carga} | 📍 ${trip.km} km | 🔴 ${trip.toneladas}tn | ${trip.urgencia}
+                            </div>
+                        </div>
+                        <div class="trip-price">
+                            <div class="trip-price-num">$${trip.precio.toLocaleString()}</div>
+                            <div class="trip-price-km">${trip.km} km</div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function verDetalle(tripId) {
+            currentTrip = trips.find(t => t.id === tripId);
+            document.getElementById('detail-origen').textContent = currentTrip.origen;
+            document.getElementById('detail-destino').textContent = currentTrip.destino;
+            document.getElementById('detail-km').textContent = currentTrip.km + ' km';
+            document.getElementById('detail-carga').textContent = currentTrip.carga;
+            document.getElementById('detail-toneladas').textContent = currentTrip.toneladas + ' tn';
+            document.getElementById('detail-urgencia').textContent = currentTrip.urgencia;
+            document.getElementById('offer-amount').value = currentTrip.precio;
+            goToScreen('detalle');
+        }
+
+        function enviarOferta() {
+            const oferta = parseInt(document.getElementById('offer-amount').value);
+            if (!oferta || oferta < 1000) {
+                alert('Ingresa una oferta válida');
+                return;
+            }
+
+            document.getElementById('oferta-enviada-texto').textContent = `Tu oferta de $${oferta.toLocaleString()} está en competencia`;
+            
+            // Simular ranking
+            const ranking = [
+                { conductor: 'Tu oferta', cantidad: oferta },
+                { conductor: 'Conductor B', cantidad: oferta - 500 },
+                { conductor: 'Conductor C', cantidad: oferta - 1000 },
+                { conductor: 'Conductor D', cantidad: oferta - 1500 },
+                { conductor: 'Conductor E', cantidad: oferta - 2000 }
+            ];
+            ranking.sort((a, b) => b.cantidad - a.cantidad);
+
+            const rankingHTML = ranking.map((r, idx) => `
+                <div class="ranking-item ${idx === 0 ? 'first' : ''}">
+                    <div class="ranking-position">#${idx + 1}</div>
+                    <div class="ranking-conductor">${r.conductor}</div>
+                    <div class="ranking-offer">$${r.cantidad.toLocaleString()}</div>
+                </div>
+            `).join('');
+
+            document.getElementById('ranking-container').innerHTML = rankingHTML;
+
+            // Countdown
+            let tiempo = 60;
+            const countdownInterval = setInterval(() => {
+                tiempo--;
+                document.getElementById('countdown-oferta').textContent = tiempo;
+                if (tiempo <= 0) {
+                    clearInterval(countdownInterval);
+                    goToScreen('esperando');
+                    mostrarEsperando();
+                }
+            }, 1000);
+
+            goToScreen('oferta-enviada');
+        }
+
+        function verOfertasVivo() {
+            alert('📊 Ofertas en Tiempo Real\n\n' + document.getElementById('ranking-container').innerText);
+        }
+
+        function mostrarEsperando() {
+            const ranking = document.getElementById('ranking-container').innerHTML;
+            document.getElementById('ranking-esperando-container').innerHTML = ranking;
+
+            let tiempo = 45;
+            const countdownInterval = setInterval(() => {
+                tiempo--;
+                document.getElementById('countdown-esperando').textContent = tiempo;
+                if (tiempo <= 0) {
+                    clearInterval(countdownInterval);
+                }
+            }, 1000);
+        }
+
+        function mostrarResultado() {
+            document.getElementById('winner-ruta').textContent = `${currentTrip.origen} → ${currentTrip.destino}`;
+            document.getElementById('winner-km').textContent = currentTrip.km + ' km';
+            document.getElementById('winner-oferta').textContent = '$' + document.getElementById('offer-amount').value;
+            goToScreen('ganaste');
+        }
+
+        function empezarViaje() {
+            alert('✅ Viaje iniciado\n\nTus datos se han sincronizado. El despachante te está esperando en:\n\n' + document.querySelector('.load-data-value').textContent);
+        }
+
+        // ===== FUNCIONES DE NAVEGACIÓN =====
+        function switchRole(btn, role) {
+            document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+            document.getElementById(role + '-view').classList.add('active');
+            document.querySelectorAll('.role-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            
+            if (role === 'conductor') {
+                loadTripsUI();
+                goToScreen('listado');
+            }
+            if (role === 'admin') loadAdminUI();
+        }
+
+        function switchAdminTab(btn, tab) {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.getElementById('admin-' + tab).classList.add('active');
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+        }
+
+        // ===== FUNCIONES ADMIN =====
+        function loadAdminUI() {
+            const subastas = document.getElementById('admin-subastas-container');
+            subastas.innerHTML = trips.slice(0, 3).map((trip, idx) => `
+                <div class="trip-card" style="margin-bottom: 1rem;">
+                    <div class="trip-header">
+                        <div>
+                            <div class="trip-title">🏆 Subasta #${trip.id}</div>
+                            <div class="trip-details">${trip.origen} → ${trip.destino} | ${trip.km} km</div>
+                        </div>
+                        <div style="text-align: right;">
+                            <div style="font-size: 20px; font-weight: 600; color: #27500A;">${8 - idx} ofertas</div>
+                            <div style="font-size: 12px; color: #FF9800; font-weight: 600;">${60 - (idx * 15)}s</div>
+                        </div>
+                    </div>
+                    <button class="btn secondary btn-small" onclick="verDetallesSubasta(${trip.id})" style="width: 100%; margin-top: 1rem;">Ver detalles</button>
+                </div>
+            `).join('');
+
+            const conductores = [
+                { nombre: "Juan Pérez", dni: "25845632", tel: "+549112584563", docs: "10/10", status: "Aprobado", viajes: 24 },
+                { nombre: "María González", dni: "32156478", tel: "+549113215647", docs: "10/10", status: "Aprobado", viajes: 18 },
+                { nombre: "Carlos López", dni: "28945632", tel: "+549112894563", docs: "8/10", status: "Pendiente", viajes: 0 },
+                { nombre: "Ana Martínez", dni: "29735641", tel: "+549112973564", docs: "10/10", status: "Aprobado", viajes: 31 },
+                { nombre: "Roberto Díaz", dni: "26847593", tel: "+549112684759", docs: "6/10", status: "Incompleto", viajes: 0 }
+            ];
+
+            const tbody = document.getElementById('conductores-tbody');
+            tbody.innerHTML = conductores.map((c, idx) => `
+                <tr>
+                    <td><strong>${c.nombre}</strong></td>
+                    <td>${c.dni}</td>
+                    <td>${c.tel}</td>
+                    <td>${c.docs}</td>
+                    <td><span class="status-badge ${c.status.toLowerCase()}">${c.status}</span></td>
+                    <td>${c.viajes}</td>
+                    <td>
+                        ${c.status === 'Pendiente' ? `<button class="btn success btn-small" onclick="aprobarConductor(${idx})">✓ Aprobar</button>` : '-'}
+                        ${c.status === 'Incompleto' ? `<button class="btn danger btn-small" onclick="rechazarConductor(${idx})">✗ Rechazar</button>` : '-'}
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function crearViaje() {
+            const origen = document.getElementById('new-origen').value;
+            const destino = document.getElementById('new-destino').value;
+            const km = parseInt(document.getElementById('new-km').value);
+            const precio = parseInt(document.getElementById('new-precio').value);
+            const carga = document.getElementById('new-carga').value;
+            const urgencia = document.getElementById('new-urgencia').value;
+
+            if (!origen || !destino || !km || !precio || !carga) {
+                alert('Completa todos los campos');
+                return;
+            }
+
+            trips.push({
+                id: trips.length + 1,
+                origen, destino, km, precio, carga, toneladas: 5, urgencia
+            });
+
+            alert('✅ Viaje creado correctamente');
+            document.getElementById('new-origen').value = '';
+            document.getElementById('new-destino').value = '';
+            document.getElementById('new-km').value = '';
+            document.getElementById('new-precio').value = '';
+            document.getElementById('new-carga').value = '';
+            loadAdminUI();
+        }
+
+        function verDetallesSubasta(tripId) {
+            const trip = trips.find(t => t.id === tripId);
+            alert(`📊 Detalles Subasta #${tripId}\n\n${trip.origen} → ${trip.destino}\nDistancia: ${trip.km} km\nPrecio base: $${trip.precio}\nCarga: ${trip.carga}\nUrgencia: ${trip.urgencia}`);
+        }
+
+        function aprobarConductor(idx) {
+            alert('✅ Conductor aprobado correctamente');
+            loadAdminUI();
+        }
+
+        function rechazarConductor(idx) {
+            alert('❌ Conductor rechazado');
+            loadAdminUI();
+        }
+
+        // ===== FUNCIONES ONBOARDING =====
+        function updateStepUI() {
+            document.getElementById('step-number').textContent = currentStep;
+            document.getElementById('current-step').textContent = currentStep;
+            document.getElementById('step-title').textContent = stepData[currentStep - 1].title;
+            document.getElementById('step-desc').textContent = stepData[currentStep - 1].desc;
+            document.getElementById('progress-fill').style.width = (currentStep / 12 * 100) + '%';
+
+            document.querySelectorAll('.form-section').forEach(s => s.classList.remove('active'));
+            document.querySelector(`[data-step="${currentStep}"]`).classList.add('active');
+
+            document.getElementById('prev-btn').style.display = currentStep > 1 ? 'block' : 'none';
+            document.getElementById('next-btn').style.display = currentStep < 12 ? 'block' : 'none';
+            document.getElementById('submit-btn').style.display = currentStep === 12 ? 'block' : 'none';
+        }
+
+        function changeStep(direction) {
+            if (direction === 1 && currentStep < 12) currentStep++;
+            else if (direction === -1 && currentStep > 1) currentStep--;
+            updateStepUI();
+        }
+
+        function submitOnboarding() {
+            alert('✅ Registro enviado para aprobación\n\nRecibirás un email en 48-72 horas');
+            currentStep = 1;
+            updateStepUI();
+            document.querySelectorAll('input, select').forEach(el => el.value = '');
+        }
+
+        // ===== INICIALIZACIÓN =====
+        loadTripsUI();
+        updateStepUI();
+    </script>
+</body>
+</html>
