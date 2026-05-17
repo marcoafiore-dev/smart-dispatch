@@ -1,0 +1,2206 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Smart Dispatch — Logant</title>
+<style>
+:root {
+  --blue:     #185FA5;
+  --blue-dk:  #0C447C;
+  --blue-lt:  #E3F2FD;
+  --green:    #27500A;
+  --green-lt: #E8F5E9;
+  --orange:   #E65100;
+  --orange-lt:#FFF3E0;
+  --red:      #C62828;
+  --red-lt:   #FFEBEE;
+  --purple:   #6A1B9A;
+  --purple-lt:#F3E5F5;
+  --gray-bg:  #F4F6F8;
+  --gray-bd:  #E0E4EA;
+  --gray-txt: #64748B;
+  --white:    #FFFFFF;
+  --shadow-sm:0 1px 4px rgba(0,0,0,.07);
+  --shadow:   0 4px 16px rgba(0,0,0,.10);
+  --radius:   10px;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--gray-bg);color:#1A202C;line-height:1.5;}
+a{color:inherit;text-decoration:none;}
+
+/* ── BADGE ── */
+.badge-mvp  {background:#E8F5E9;color:#27500A;border:1px solid #A5D6A7;}
+.badge-v1   {background:#E3F2FD;color:#0C447C;border:1px solid #90CAF9;}
+.badge-v2   {background:#F3E5F5;color:#6A1B9A;border:1px solid #CE93D8;}
+.version-badge{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:20px;font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;}
+
+/* ── HEADER ── */
+.app-header{background:linear-gradient(135deg,var(--blue) 0%,var(--blue-dk) 100%);color:#fff;padding:.85rem 1.5rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,.15);}
+.app-header h1{font-size:19px;font-weight:700;letter-spacing:-.3px;}
+.app-header p{font-size:11px;opacity:.8;margin-top:1px;}
+.hdr-right{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;}
+.pill{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);color:#fff;padding:4px 12px;border-radius:20px;font-size:12px;display:flex;align-items:center;gap:5px;}
+.hdr-btn{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.25);color:#fff;padding:5px 11px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:500;transition:.15s;}
+.hdr-btn:hover{background:rgba(255,255,255,.2);}
+
+/* ── NAV TABS ── */
+.nav-tabs{background:#fff;border-bottom:1px solid var(--gray-bd);display:flex;overflow-x:auto;gap:0;position:sticky;top:60px;z-index:99;}
+.nav-tab{padding:.75rem 1.1rem;border:none;background:none;cursor:pointer;font-size:13px;font-weight:500;color:var(--gray-txt);border-bottom:3px solid transparent;white-space:nowrap;transition:.15s;}
+.nav-tab.active{color:var(--blue-dk);border-bottom-color:var(--blue-dk);font-weight:600;}
+.nav-tab:hover:not(.active){color:#333;background:#fafafa;}
+
+/* ── LAYOUT ── */
+.content{padding:1.25rem;max-width:960px;margin:0 auto;}
+.view{display:none;}.view.active{display:block;}
+.screen{display:none;}.screen.active{display:block;}
+
+/* ── CARDS ── */
+.card{background:#fff;border-radius:var(--radius);border:1px solid var(--gray-bd);padding:1.25rem;box-shadow:var(--shadow-sm);}
+.card+.card{margin-top:.85rem;}
+.card-blue{background:var(--blue-lt);border:none;}
+.card-green{background:var(--green-lt);border:none;}
+.card-orange{background:var(--orange-lt);border:none;}
+.card-purple{background:var(--purple-lt);border:none;}
+.card-dark{background:linear-gradient(135deg,var(--blue) 0%,var(--blue-dk) 100%);color:#fff;border:none;}
+
+/* ── TRIP CARD ── */
+.trip-card{background:#fff;border:1px solid var(--gray-bd);border-left:4px solid var(--blue);border-radius:var(--radius);padding:1.1rem 1.25rem;margin-bottom:.75rem;cursor:pointer;transition:all .2s;box-shadow:var(--shadow-sm);}
+.trip-card:hover{box-shadow:var(--shadow);transform:translateY(-1px);border-left-color:var(--green);}
+.trip-hdr{display:flex;justify-content:space-between;align-items:flex-start;gap:.75rem;}
+.trip-title{font-weight:700;color:var(--blue-dk);font-size:15px;margin-bottom:3px;}
+.trip-meta{font-size:12px;color:var(--gray-txt);line-height:1.7;}
+.trip-price{font-size:22px;font-weight:800;color:var(--green);white-space:nowrap;}
+.trip-km{font-size:11px;color:#aaa;margin-top:2px;text-align:right;}
+
+/* ── BADGES ── */
+.tag{display:inline-block;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:600;margin:3px 3px 0 0;}
+.tag-blue{background:var(--blue-lt);color:var(--blue-dk);}
+.tag-green{background:var(--green-lt);color:var(--green);}
+.tag-orange{background:var(--orange-lt);color:var(--orange);}
+.tag-red{background:var(--red-lt);color:var(--red);}
+.tag-purple{background:var(--purple-lt);color:var(--purple);}
+.tag-gray{background:#F1F5F9;color:#475569;}
+
+/* ── DETAIL GRID ── */
+.dgrid{display:grid;grid-template-columns:1fr 1fr;gap:.65rem;margin-bottom:1rem;}
+.dgrid-item{background:#F8FAFC;border-radius:8px;padding:.85rem;}
+.dgrid-lbl{font-size:10px;color:#94A3B8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px;}
+.dgrid-val{font-size:15px;font-weight:600;color:var(--blue-dk);}
+
+/* ── COMPAT ── */
+.compat-box{background:var(--green-lt);border-left:4px solid var(--green);border-radius:0 8px 8px 0;padding:1rem;margin-bottom:.85rem;}
+.compat-title{color:var(--green);font-weight:700;font-size:13px;margin-bottom:.5rem;}
+.compat-row{display:flex;align-items:center;gap:6px;font-size:13px;color:#2E7D32;margin-bottom:3px;}
+
+/* ── SCORE ── */
+.score-box{background:linear-gradient(135deg,var(--blue),var(--blue-dk));color:#fff;border-radius:10px;padding:1.25rem;text-align:center;margin-bottom:.85rem;}
+.score-lbl{font-size:11px;opacity:.85;text-transform:uppercase;letter-spacing:.06em;}
+.score-num{font-size:52px;font-weight:800;margin:.2rem 0;}
+.score-desc{font-size:13px;opacity:.85;}
+
+/* ── OFFER INPUT ── */
+.offer-box{background:#fff;border-radius:10px;padding:1.1rem;border:1px solid var(--gray-bd);margin-bottom:.85rem;}
+.offer-row{display:flex;gap:.65rem;align-items:center;}
+.offer-row input{flex:1;padding:10px 14px;border:2px solid var(--gray-bd);border-radius:7px;font-size:16px;font-weight:600;}
+.offer-row input:focus{outline:none;border-color:var(--blue);}
+
+/* ── COUNTDOWN ── */
+.cd-box{background:#FFF8E1;border-left:4px solid #FF9800;border-radius:0 10px 10px 0;padding:1.25rem;text-align:center;margin-bottom:.85rem;}
+.cd-num{font-size:68px;font-weight:800;color:#FF9800;font-family:'Courier New',monospace;line-height:1;}
+.cd-lbl{font-size:12px;color:#888;margin-top:5px;}
+
+/* ── RANKING ── */
+.rank-item{display:flex;align-items:center;padding:.85rem 1rem;border-bottom:1px solid #F0F4F8;gap:.85rem;}
+.rank-item:last-child{border-bottom:none;}
+.rank-item.me{background:var(--blue-lt);border-radius:7px;}
+.rank-pos{width:36px;height:36px;border-radius:50%;background:#F1F5F9;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;color:var(--blue-dk);flex-shrink:0;}
+.rank-pos.gold{background:#FFF8E1;color:#F57F17;}
+.rank-name{flex:1;font-size:14px;font-weight:500;}
+.rank-price{font-weight:800;color:var(--green);font-size:15px;}
+.rank-star{font-size:11px;color:#94A3B8;}
+
+/* ── WINNER ── */
+.winner-box{background:var(--green-lt);border:3px solid var(--green);border-radius:14px;padding:2rem;text-align:center;margin-bottom:1.25rem;}
+.winner-icon{font-size:60px;margin-bottom:.75rem;}
+.winner-title{color:#1B5E20;font-size:26px;font-weight:800;}
+.winner-sub{color:#388E3C;font-size:14px;margin:.3rem 0 1rem;}
+.winner-detail{background:#fff;border-radius:8px;padding:1rem;text-align:left;}
+.winner-row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #F0F4F8;font-size:13px;}
+.winner-row:last-child{border-bottom:none;}
+
+/* ── LOAD DATA ── */
+.load-section{background:#fff;border-radius:10px;padding:1.1rem;border:1px solid var(--gray-bd);margin-bottom:.75rem;}
+.load-title{color:var(--blue-dk);font-weight:700;font-size:14px;margin-bottom:.75rem;}
+.load-item{background:#F8FAFC;border-left:3px solid var(--blue);border-radius:0 7px 7px 0;padding:.7rem 1rem;margin-bottom:.5rem;}
+.load-lbl{font-size:10px;color:#94A3B8;text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px;}
+.load-val{font-size:13px;color:#334155;line-height:1.5;}
+
+/* ── BUTTONS ── */
+.btn{padding:10px 20px;background:var(--blue-dk);color:#fff;border:none;border-radius:7px;cursor:pointer;font-weight:600;font-size:14px;display:inline-flex;align-items:center;gap:6px;transition:.15s;white-space:nowrap;}
+.btn:hover{opacity:.9;transform:translateY(-1px);}
+.btn-green{background:var(--green);}
+.btn-red{background:var(--red);}
+.btn-orange{background:var(--orange);}
+.btn-purple{background:var(--purple);}
+.btn-gray{background:#F1F5F9;color:#334155;border:1px solid var(--gray-bd);}
+.btn-gray:hover{background:#E2E8F0;}
+.btn-outline{background:#fff;color:var(--blue-dk);border:2px solid var(--blue-dk);}
+.btn-sm{padding:6px 13px;font-size:12px;}
+.btn-full{width:100%;justify-content:center;}
+.btn-row{display:flex;gap:.65rem;margin-top:1.25rem;flex-wrap:wrap;}
+.btn-row .btn{flex:1;justify-content:center;}
+
+/* ── FORMS ── */
+.form-group{margin-bottom:.9rem;}
+.form-group label{display:block;font-size:12px;font-weight:600;color:#475569;margin-bottom:5px;}
+.form-group input,.form-group select,.form-group textarea{width:100%;padding:10px 12px;border:1px solid var(--gray-bd);border-radius:7px;font-size:14px;background:#fff;transition:.15s;}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(24,95,165,.1);}
+.form-row2{display:grid;grid-template-columns:1fr 1fr;gap:.75rem;}
+.req{color:var(--red);}
+
+/* ── TABLE ── */
+.tbl-wrap{overflow-x:auto;}
+table{width:100%;border-collapse:collapse;background:#fff;border-radius:10px;overflow:hidden;border:1px solid var(--gray-bd);}
+th{background:#F8FAFC;padding:.85rem 1rem;text-align:left;font-size:11px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.05em;}
+td{padding:.85rem 1rem;border-bottom:1px solid #F0F4F8;font-size:13px;}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:#FAFBFC;}
+
+/* ── KPI GRID ── */
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.75rem;margin-bottom:1.25rem;}
+.kpi-card{background:#fff;border:1px solid var(--gray-bd);border-radius:10px;padding:1.1rem;text-align:center;box-shadow:var(--shadow-sm);}
+.kpi-lbl{font-size:10px;color:#94A3B8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;font-weight:600;}
+.kpi-val{font-size:28px;font-weight:800;color:var(--blue-dk);}
+.kpi-sub{font-size:11px;color:#94A3B8;margin-top:2px;}
+
+/* ── ADMIN TABS ── */
+.admin-tabs{display:flex;border-bottom:2px solid var(--gray-bd);margin-bottom:1.25rem;overflow-x:auto;gap:0;}
+.admin-tab{padding:.75rem 1.1rem;border:none;background:none;cursor:pointer;font-weight:500;font-size:13px;color:var(--gray-txt);border-bottom:3px solid transparent;margin-bottom:-2px;white-space:nowrap;transition:.15s;}
+.admin-tab.active{color:var(--blue-dk);border-bottom-color:var(--blue-dk);font-weight:700;}
+.admin-tab:hover:not(.active){color:#333;}
+.tab-pane{display:none;}.tab-pane.active{display:block;}
+
+/* ── STATUS DOTS ── */
+.status{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;}
+.status-ok{background:var(--green-lt);color:var(--green);}
+.status-warn{background:var(--orange-lt);color:var(--orange);}
+.status-err{background:var(--red-lt);color:var(--red);}
+.status-info{background:var(--blue-lt);color:var(--blue-dk);}
+.status-purple{background:var(--purple-lt);color:var(--purple);}
+.dot{width:6px;height:6px;border-radius:50%;background:currentColor;}
+
+/* ── OVERLAY/MODAL ── */
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:999;align-items:center;justify-content:center;padding:1rem;}
+.overlay.active{display:flex;}
+.modal{background:#fff;border-radius:14px;padding:1.75rem;width:100%;max-width:520px;max-height:88vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.2);}
+.modal h3{color:var(--blue-dk);font-size:18px;margin-bottom:1rem;}
+.offer-sel-item{display:flex;justify-content:space-between;align-items:center;padding:.9rem;border:2px solid var(--gray-bd);border-radius:8px;margin-bottom:.5rem;cursor:pointer;transition:.15s;}
+.offer-sel-item:hover{border-color:var(--blue);}
+.offer-sel-item.selected{border-color:var(--green);background:var(--green-lt);}
+.offer-sel-price{font-size:20px;font-weight:800;color:var(--blue-dk);}
+
+/* ── PROGRESS BAR ── */
+.progress-wrap{background:#E2E8F0;height:6px;border-radius:3px;overflow:hidden;margin-bottom:1.25rem;}
+.progress-fill{background:linear-gradient(90deg,var(--blue),var(--blue-dk));height:100%;border-radius:3px;transition:width .35s ease;}
+.step-hdr{display:flex;align-items:center;gap:.75rem;margin-bottom:1.25rem;}
+.step-circle{width:42px;height:42px;border-radius:50%;background:var(--blue-dk);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:17px;flex-shrink:0;}
+.step-info h3{color:var(--blue-dk);font-size:16px;margin-bottom:2px;}
+.step-info p{font-size:12px;color:var(--gray-txt);}
+.form-section{display:none;}.form-section.active{display:block;}
+
+/* ── LOGIN ── */
+.login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#EBF4FF 0%,#DBEAFE 50%,#E0E7FF 100%);padding:1rem;}
+.login-card{background:#fff;border-radius:16px;padding:2.25rem 2rem;width:100%;max-width:420px;box-shadow:0 20px 60px rgba(12,68,124,.12);}
+.login-logo{text-align:center;margin-bottom:1.75rem;}
+.login-logo h2{color:var(--blue-dk);font-size:24px;font-weight:800;margin:.5rem 0 4px;}
+.login-logo p{font-size:13px;color:var(--gray-txt);}
+.role-tabs{display:flex;border:1px solid var(--gray-bd);border-radius:8px;overflow:hidden;margin-bottom:1.5rem;}
+.role-tab{flex:1;padding:9px;text-align:center;font-size:12px;font-weight:600;cursor:pointer;background:#fff;color:var(--gray-txt);border:none;transition:.15s;}
+.role-tab.active{background:var(--blue-dk);color:#fff;}
+
+/* ── SECTION TITLE ── */
+.section-title{font-size:16px;font-weight:700;color:#1A202C;margin:1.25rem 0 .75rem;}
+.back-btn{display:inline-flex;align-items:center;gap:6px;background:#F1F5F9;border:1px solid var(--gray-bd);color:#334155;padding:7px 15px;border-radius:7px;cursor:pointer;font-size:13px;font-weight:500;margin-bottom:1.1rem;transition:.15s;}
+.back-btn:hover{background:#E2E8F0;}
+
+/* ── GPS SCREEN ── */
+.gps-map{background:linear-gradient(135deg,#E1F5EE,#B2DFDB);border:2px solid #0F6E56;border-radius:10px;padding:2.5rem;text-align:center;margin-bottom:1rem;}
+.gps-icon{font-size:40px;margin-bottom:.5rem;}
+.gps-label{font-weight:700;color:#0F6E56;font-size:15px;}
+.gps-sub{font-size:12px;color:#0F6E56;opacity:.8;margin-top:4px;}
+
+/* ── NOTIFICATION ── */
+.notif-item{display:flex;gap:.85rem;padding:.85rem 0;border-bottom:1px solid #F0F4F8;cursor:pointer;transition:.15s;}
+.notif-item:last-child{border-bottom:none;}
+.notif-item:hover{opacity:.8;}
+.notif-icon{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;}
+.notif-icon-blue{background:var(--blue-lt);}
+.notif-icon-green{background:var(--green-lt);}
+.notif-icon-orange{background:var(--orange-lt);}
+.notif-text h4{font-size:13px;font-weight:600;color:#1A202C;margin-bottom:2px;}
+.notif-text p{font-size:12px;color:var(--gray-txt);}
+.notif-dot{width:8px;height:8px;border-radius:50%;background:var(--blue);margin-top:4px;flex-shrink:0;}
+
+/* ── SUPER ADMIN ── */
+.sa-header{background:linear-gradient(135deg,#4A1D96 0%,#6D28D9 100%);color:#fff;padding:1.5rem;border-radius:12px;margin-bottom:1.25rem;}
+.sa-header h2{font-size:19px;font-weight:700;margin-bottom:4px;}
+.sa-header p{font-size:13px;opacity:.85;}
+.tenant-card{background:#fff;border:1px solid var(--gray-bd);border-radius:10px;padding:1.1rem 1.25rem;margin-bottom:.75rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;box-shadow:var(--shadow-sm);}
+.tenant-name{font-weight:700;font-size:15px;color:#1A202C;}
+.tenant-meta{font-size:12px;color:var(--gray-txt);margin-top:2px;}
+.tenant-mrr{font-size:18px;font-weight:800;color:var(--green);}
+
+/* ── CHART BARS ── */
+.chart-row{display:flex;align-items:center;gap:.75rem;margin-bottom:.5rem;}
+.chart-lbl{width:110px;font-size:12px;color:#64748B;text-align:right;flex-shrink:0;}
+.chart-bar-wrap{flex:1;background:#F1F5F9;border-radius:4px;overflow:hidden;height:20px;}
+.chart-bar{height:100%;border-radius:4px;display:flex;align-items:center;padding-left:.5rem;font-size:11px;font-weight:700;color:#fff;transition:width .5s ease;}
+.chart-val{width:60px;font-size:12px;font-weight:700;color:var(--blue-dk);}
+
+/* ── LANDING ── */
+.landing{max-width:100%;overflow-x:hidden;}
+.hero{background:linear-gradient(135deg,var(--blue-dk) 0%,#1E40AF 100%);color:#fff;padding:3.5rem 1.5rem;text-align:center;}
+.hero h1{font-size:34px;font-weight:800;line-height:1.2;margin-bottom:1rem;}
+.hero p{font-size:16px;opacity:.9;max-width:540px;margin:0 auto 1.75rem;}
+.hero-btns{display:flex;gap:.75rem;justify-content:center;flex-wrap:wrap;}
+.feature-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1rem;padding:2rem 1.5rem;}
+.feature-card{background:#fff;border:1px solid var(--gray-bd);border-radius:12px;padding:1.5rem;text-align:center;box-shadow:var(--shadow-sm);}
+.feature-icon{font-size:36px;margin-bottom:.75rem;}
+.feature-title{font-size:15px;font-weight:700;color:#1A202C;margin-bottom:.5rem;}
+.feature-desc{font-size:13px;color:var(--gray-txt);line-height:1.6;}
+.pricing-section{background:#F8FAFC;padding:2rem 1.5rem;text-align:center;}
+.pricing-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1rem;margin-top:1.5rem;max-width:720px;margin-left:auto;margin-right:auto;}
+.plan-card{background:#fff;border:2px solid var(--gray-bd);border-radius:14px;padding:1.75rem;text-align:center;}
+.plan-card.featured{border-color:var(--blue);position:relative;}
+.plan-name{font-size:16px;font-weight:800;color:#1A202C;margin-bottom:.5rem;}
+.plan-price{font-size:32px;font-weight:800;color:var(--blue-dk);margin-bottom:.25rem;}
+.plan-period{font-size:12px;color:var(--gray-txt);}
+.plan-feature{font-size:13px;color:#334155;margin:.5rem 0;}
+
+/* ── COLORS PICKER PREVIEW ── */
+.color-swatch{width:36px;height:36px;border-radius:7px;border:2px solid var(--gray-bd);cursor:pointer;transition:.15s;}
+.color-swatch:hover{transform:scale(1.1);}
+
+/* ── INTEGRATION CARD ── */
+.integration-card{background:#fff;border:1px solid var(--gray-bd);border-radius:10px;padding:1rem 1.25rem;margin-bottom:.65rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;}
+.integration-icon{font-size:28px;width:48px;height:48px;background:#F8FAFC;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.integration-name{font-weight:700;font-size:14px;color:#1A202C;}
+.integration-desc{font-size:12px;color:var(--gray-txt);}
+.toggle{position:relative;width:44px;height:24px;background:#E2E8F0;border-radius:12px;cursor:pointer;transition:.2s;flex-shrink:0;}
+.toggle.on{background:var(--green);}
+.toggle::after{content:'';position:absolute;top:2px;left:2px;width:20px;height:20px;background:#fff;border-radius:50%;transition:.2s;box-shadow:0 1px 4px rgba(0,0,0,.2);}
+.toggle.on::after{left:22px;}
+
+/* ── PWA CHECKLIST ── */
+.pwa-item{display:flex;align-items:center;gap:.85rem;padding:.85rem 0;border-bottom:1px solid #F0F4F8;}
+.pwa-item:last-child{border-bottom:none;}
+.pwa-check{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;}
+.pwa-check.done{background:var(--green-lt);color:var(--green);}
+.pwa-check.todo{background:#F1F5F9;color:#94A3B8;}
+.pwa-label{font-size:13px;font-weight:600;color:#1A202C;}
+.pwa-desc{font-size:12px;color:var(--gray-txt);}
+
+/* ── LOG ROW ── */
+.log-row{display:flex;align-items:center;gap:.75rem;padding:.65rem 0;border-bottom:1px solid #F0F4F8;font-size:12px;}
+.log-row:last-child{border-bottom:none;}
+.log-time{color:#94A3B8;width:80px;flex-shrink:0;}
+.log-action{flex:1;color:#334155;}
+.log-user{color:var(--blue-dk);font-weight:600;}
+.log-tenant{color:var(--purple);font-weight:600;}
+
+/* ── TENANT ONBOARDING ── */
+.plan-select-card{border:2px solid var(--gray-bd);border-radius:10px;padding:1.25rem;cursor:pointer;transition:.15s;text-align:center;}
+.plan-select-card:hover{border-color:var(--blue);}
+.plan-select-card.selected{border-color:var(--blue-dk);background:var(--blue-lt);}
+.plan-select-name{font-weight:700;font-size:16px;color:#1A202C;margin-bottom:.35rem;}
+.plan-select-price{font-size:22px;font-weight:800;color:var(--blue-dk);}
+.plan-select-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:.75rem;margin-bottom:1rem;}
+
+/* ── ANALYTICS ── */
+.metric-row{display:flex;justify-content:space-between;align-items:center;padding:.75rem 0;border-bottom:1px solid #F0F4F8;font-size:13px;}
+.metric-row:last-child{border-bottom:none;}
+.metric-name{color:#334155;}
+.metric-val{font-weight:700;color:var(--blue-dk);}
+.metric-delta{font-size:11px;font-weight:600;padding:2px 7px;border-radius:20px;}
+.delta-pos{background:var(--green-lt);color:var(--green);}
+.delta-neg{background:var(--red-lt);color:var(--red);}
+
+/* ── RESPONSIVE ── */
+@media(max-width:600px){
+  .content{padding:.85rem;}
+  .form-row2{grid-template-columns:1fr;}
+  .dgrid{grid-template-columns:1fr;}
+  .btn-row{flex-direction:column;}
+  .kpi-grid{grid-template-columns:1fr 1fr;}
+  .cd-num{font-size:52px;}
+  .score-num{font-size:38px;}
+  .trip-hdr{flex-direction:column;}
+  .trip-km{text-align:left;}
+  .hero h1{font-size:26px;}
+  .tenant-card{flex-direction:column;align-items:flex-start;}
+}
+</style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════════
+     LOGIN VIEW
+════════════════════════════════════════════ -->
+<div id="login-view">
+<div class="login-wrap">
+<div class="login-card">
+  <div class="login-logo">
+    <div style="font-size:42px;">🚚</div>
+    <h2>Smart Dispatch</h2>
+    <p id="ll-sub">Plataforma de subastas logísticas</p>
+  </div>
+  <div class="role-tabs">
+    <button class="role-tab active" onclick="setRole('conductor',this)" id="rt-conductor">👤 Conductor</button>
+    <button class="role-tab" onclick="setRole('admin',this)" id="rt-admin">⚙️ Admin</button>
+    <button class="role-tab" onclick="setRole('super',this)" id="rt-super">🌐 SaaS Admin</button>
+  </div>
+  <div class="form-group">
+    <label id="ll-email">Email</label>
+    <input type="text" id="login-user" placeholder="tu@email.com">
+  </div>
+  <div class="form-group">
+    <label id="ll-pass">Contraseña</label>
+    <input type="password" id="login-pass" placeholder="••••••••">
+  </div>
+  <button class="btn btn-green btn-full" onclick="doLogin()" style="margin-bottom:.75rem;" id="ll-btn">Ingresar →</button>
+  <div style="text-align:center;font-size:12px;color:var(--gray-txt);margin-bottom:1rem;">
+    <span id="ll-no-acc">¿No tenés cuenta?</span>
+    <a href="#" onclick="showLanding()" style="color:var(--blue-dk);font-weight:600;margin-left:4px;" id="ll-more">Ver el producto</a>
+    &nbsp;·&nbsp;
+    <a href="#" onclick="showTenantOnboarding()" style="color:var(--green);font-weight:600;" id="ll-reg">Registrar empresa</a>
+  </div>
+  <div style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--gray-bd);text-align:center;">
+    <p style="font-size:11px;color:#aaa;margin-bottom:.6rem;" id="ll-demo-hint">Demo: ingresá con cualquier email</p>
+    <div style="display:flex;gap:.5rem;justify-content:center;flex-wrap:wrap;">
+      <button class="btn btn-sm btn-gray" onclick="quickLogin('conductor')">Demo Conductor</button>
+      <button class="btn btn-sm btn-gray" onclick="quickLogin('admin')">Demo Admin</button>
+      <button class="btn btn-sm btn-gray" onclick="quickLogin('super')">Demo Super Admin</button>
+    </div>
+  </div>
+</div>
+</div>
+</div>
+
+<!-- ════════════════════════════════════════════
+     LANDING VIEW
+════════════════════════════════════════════ -->
+<div id="landing-view" style="display:none;">
+<div class="landing">
+  <div style="background:var(--blue-dk);color:#fff;padding:.65rem 1.5rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem;">
+    <div style="font-size:14px;font-weight:700;">🚚 Smart Dispatch <span class="version-badge badge-mvp" style="margin-left:6px;">SaaS</span></div>
+    <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
+      <button class="btn btn-sm btn-gray" onclick="setRole('conductor',null);doLogin()">Demo →</button>
+      <button class="btn btn-sm" onclick="showLogin()">Iniciar sesión</button>
+    </div>
+  </div>
+  <div class="hero">
+    <span class="version-badge badge-v1" style="margin-bottom:1rem;display:inline-flex;">V1.0 — SaaS Multi-Tenant</span>
+    <h1>Subastas de transporte en<br>tiempo real ⚡</h1>
+    <p>Reducí el tiempo de asignación de viajes un 90%. Conductores ofertando, ranking en vivo, asignación automática.</p>
+    <div class="hero-btns">
+      <button class="btn" style="background:#fff;color:var(--blue-dk);font-size:15px;padding:12px 28px;" onclick="showTenantOnboarding()">🚀 Empezar gratis</button>
+      <button class="btn btn-outline" style="border-color:rgba(255,255,255,.5);color:#fff;font-size:15px;padding:12px 28px;" onclick="quickLogin('conductor')">Ver demo</button>
+    </div>
+  </div>
+  <div class="feature-grid">
+    <div class="feature-card">
+      <div class="feature-icon">⏱</div>
+      <div class="feature-title">Countdown 60 segundos</div>
+      <div class="feature-desc">Conductores compiten en tiempo real. Precio más competitivo gana automáticamente.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">📊</div>
+      <div class="feature-title">Dashboard en vivo</div>
+      <div class="feature-desc">KPIs, subastas activas y conductores, todo en un solo lugar para el admin.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">📱</div>
+      <div class="feature-title">App iOS + Android</div>
+      <div class="feature-desc">Conductores ofertan desde su celular. GPS en vivo durante el viaje.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🏷️</div>
+      <div class="feature-title">White-label</div>
+      <div class="feature-desc">Tu marca, tus colores, tu dominio. Listo en 24 horas.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🔗</div>
+      <div class="feature-title">API & Webhooks</div>
+      <div class="feature-desc">Integrá con tu TMS, ERP o sistema de facturación existente.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🌍</div>
+      <div class="feature-title">Multi-idioma</div>
+      <div class="feature-desc">Español, inglés, portugués. Expandí sin barreras.</div>
+    </div>
+  </div>
+  <div class="pricing-section">
+    <h2 style="font-size:22px;font-weight:800;color:#1A202C;margin-bottom:.35rem;">Planes transparentes</h2>
+    <p style="font-size:14px;color:var(--gray-txt);">Sin costos ocultos. Cancelás cuando querés.</p>
+    <div class="pricing-grid">
+      <div class="plan-card">
+        <div class="plan-name">Starter</div>
+        <div class="plan-price">$499</div>
+        <div class="plan-period">/mes USD</div>
+        <div style="margin:1rem 0;border-top:1px solid var(--gray-bd);padding-top:1rem;">
+          <div class="plan-feature">✓ Hasta 20 conductores</div>
+          <div class="plan-feature">✓ Dashboard admin</div>
+          <div class="plan-feature">✓ Soporte email</div>
+          <div class="plan-feature" style="color:#aaa;">✗ White-label</div>
+          <div class="plan-feature" style="color:#aaa;">✗ API</div>
+        </div>
+        <button class="btn btn-outline btn-full btn-sm" onclick="showTenantOnboarding()">Empezar</button>
+      </div>
+      <div class="plan-card featured">
+        <div class="version-badge badge-v1" style="position:absolute;top:-10px;left:50%;transform:translateX(-50%);">Más popular</div>
+        <div class="plan-name">Pro</div>
+        <div class="plan-price">$1,499</div>
+        <div class="plan-period">/mes USD</div>
+        <div style="margin:1rem 0;border-top:1px solid var(--gray-bd);padding-top:1rem;">
+          <div class="plan-feature">✓ Hasta 100 conductores</div>
+          <div class="plan-feature">✓ White-label completo</div>
+          <div class="plan-feature">✓ API + Webhooks</div>
+          <div class="plan-feature">✓ Reportes avanzados</div>
+          <div class="plan-feature">✓ Soporte prioritario</div>
+        </div>
+        <button class="btn btn-full btn-sm" onclick="showTenantOnboarding()">Empezar</button>
+      </div>
+      <div class="plan-card">
+        <div class="plan-name">Enterprise</div>
+        <div class="plan-price">Custom</div>
+        <div class="plan-period">precio a medida</div>
+        <div style="margin:1rem 0;border-top:1px solid var(--gray-bd);padding-top:1rem;">
+          <div class="plan-feature">✓ Conductores ilimitados</div>
+          <div class="plan-feature">✓ Multi-tenant</div>
+          <div class="plan-feature">✓ SLA 99.9%</div>
+          <div class="plan-feature">✓ Deploy dedicado</div>
+          <div class="plan-feature">✓ Success manager</div>
+        </div>
+        <button class="btn btn-gray btn-full btn-sm">Contactar ventas</button>
+      </div>
+    </div>
+  </div>
+  <div style="background:var(--blue-dk);color:#fff;padding:2.5rem 1.5rem;text-align:center;">
+    <h2 style="font-size:22px;font-weight:800;margin-bottom:.75rem;">¿Listo para revolucionar tu flota?</h2>
+    <p style="font-size:14px;opacity:.85;margin-bottom:1.5rem;">Configurá tu cuenta en 5 minutos. Sin tarjeta de crédito.</p>
+    <button class="btn" style="background:#fff;color:var(--blue-dk);font-size:15px;padding:12px 32px;font-weight:800;" onclick="showTenantOnboarding()">🚀 Registrar mi empresa</button>
+  </div>
+</div>
+</div>
+
+<!-- ════════════════════════════════════════════
+     TENANT ONBOARDING VIEW
+════════════════════════════════════════════ -->
+<div id="tenant-onboard-view" style="display:none;">
+<div style="background:var(--blue-dk);color:#fff;padding:.85rem 1.5rem;display:flex;align-items:center;justify-content:space-between;">
+  <div>
+    <div style="font-size:16px;font-weight:700;">🚚 Smart Dispatch</div>
+    <div style="font-size:11px;opacity:.8;">Registro de nueva empresa</div>
+  </div>
+  <button class="hdr-btn" onclick="showLogin()">← Volver al login</button>
+</div>
+<div class="content" style="max-width:640px;">
+  <div style="margin-top:1rem;" class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem;">
+      <span class="version-badge badge-v1">V1.0 — Tenant Onboarding</span>
+      <span style="font-size:12px;color:var(--gray-txt);">Paso <span id="ton-cur">1</span> de 8</span>
+    </div>
+    <div class="progress-wrap"><div class="progress-fill" id="ton-progress" style="width:12.5%;"></div></div>
+    <div class="step-hdr">
+      <div class="step-circle" id="ton-circle">1</div>
+      <div class="step-info">
+        <h3 id="ton-title">Datos de la empresa</h3>
+        <p id="ton-desc">Información básica del negocio</p>
+      </div>
+    </div>
+
+    <div class="form-section active" data-ton="1">
+      <div class="form-group"><label>Nombre de la empresa <span class="req">*</span></label><input type="text" id="ton-ename" placeholder="Logística Antártica S.A."></div>
+      <div class="form-row2">
+        <div class="form-group"><label>País <span class="req">*</span></label>
+          <select id="ton-country"><option>Argentina</option><option>Chile</option><option>Uruguay</option><option>Colombia</option><option>México</option></select>
+        </div>
+        <div class="form-group"><label>Industria <span class="req">*</span></label>
+          <select><option>Transporte de cargas</option><option>Logística</option><option>Distribución</option><option>Agro</option><option>Minería</option></select>
+        </div>
+      </div>
+      <div class="form-group"><label>Sitio web</label><input type="text" placeholder="https://miempresa.com"></div>
+      <div class="form-group"><label>Flota aproximada</label>
+        <select><option>1-20 camiones</option><option>21-50 camiones</option><option>51-200 camiones</option><option>200+ camiones</option></select>
+      </div>
+    </div>
+
+    <div class="form-section" data-ton="2">
+      <div class="form-row2">
+        <div class="form-group"><label>CUIT / RUC <span class="req">*</span></label><input type="text" id="ton-cuit" placeholder="30-12345678-9"></div>
+        <div class="form-group"><label>Razón social <span class="req">*</span></label><input type="text" placeholder="S.A. / S.R.L. / etc."></div>
+      </div>
+      <div class="form-group"><label>Dirección fiscal <span class="req">*</span></label><input type="text" placeholder="Av. Corrientes 1234, CABA"></div>
+      <div class="form-row2">
+        <div class="form-group"><label>Ciudad</label><input type="text" placeholder="Buenos Aires"></div>
+        <div class="form-group"><label>CP</label><input type="text" placeholder="C1043"></div>
+      </div>
+    </div>
+
+    <div class="form-section" data-ton="3">
+      <div class="card card-blue" style="margin-bottom:1rem;text-align:center;padding:1.5rem;">
+        <div style="font-size:48px;margin-bottom:.5rem;">🖼️</div>
+        <div style="font-weight:600;color:var(--blue-dk);margin-bottom:.35rem;">Subir logo de la empresa</div>
+        <div style="font-size:12px;color:var(--gray-txt);margin-bottom:1rem;">PNG o SVG, mínimo 200×200px</div>
+        <button class="btn btn-sm btn-gray">Seleccionar archivo</button>
+      </div>
+      <div style="margin-bottom:.75rem;font-weight:600;font-size:13px;color:#334155;">Color primario de la marca</div>
+      <div style="display:flex;gap:.65rem;flex-wrap:wrap;margin-bottom:1rem;">
+        <div class="color-swatch" style="background:#0C447C;" onclick="selectColor('#0C447C',this)" title="#0C447C"></div>
+        <div class="color-swatch" style="background:#27500A;" onclick="selectColor('#27500A',this)" title="#27500A"></div>
+        <div class="color-swatch" style="background:#6A1B9A;" onclick="selectColor('#6A1B9A',this)" title="#6A1B9A"></div>
+        <div class="color-swatch" style="background:#B71C1C;" onclick="selectColor('#B71C1C',this)" title="#B71C1C"></div>
+        <div class="color-swatch" style="background:#E65100;" onclick="selectColor('#E65100',this)" title="#E65100"></div>
+        <div class="color-swatch" style="background:#004D40;" onclick="selectColor('#004D40',this)" title="#004D40"></div>
+      </div>
+      <div class="form-group"><label>Color personalizado (hex)</label><input type="text" id="ton-color" placeholder="#185FA5" value="#185FA5"></div>
+    </div>
+
+    <div class="form-section" data-ton="4">
+      <div style="font-weight:600;font-size:14px;color:#334155;margin-bottom:.75rem;">Elegí tu plan</div>
+      <div class="plan-select-grid" id="ton-plan-grid">
+        <div class="plan-select-card selected" onclick="selectPlan(this)">
+          <div class="plan-select-name">Starter</div>
+          <div class="plan-select-price">$499<span style="font-size:12px;color:var(--gray-txt);">/mes</span></div>
+          <div style="font-size:12px;color:var(--gray-txt);margin-top:.35rem;">Hasta 20 conductores</div>
+        </div>
+        <div class="plan-select-card" onclick="selectPlan(this)">
+          <div class="plan-select-name">Pro ⭐</div>
+          <div class="plan-select-price">$1,499<span style="font-size:12px;color:var(--gray-txt);">/mes</span></div>
+          <div style="font-size:12px;color:var(--gray-txt);margin-top:.35rem;">Hasta 100 conductores</div>
+        </div>
+        <div class="plan-select-card" onclick="selectPlan(this)">
+          <div class="plan-select-name">Enterprise</div>
+          <div class="plan-select-price">Custom</div>
+          <div style="font-size:12px;color:var(--gray-txt);margin-top:.35rem;">Ilimitado · SLA 99.9%</div>
+        </div>
+      </div>
+      <div class="form-group"><label>Método de pago</label>
+        <select><option>Tarjeta de crédito</option><option>Transferencia bancaria</option><option>Débito automático</option></select>
+      </div>
+    </div>
+
+    <div class="form-section" data-ton="5">
+      <div class="form-group"><label>Nombre del admin principal <span class="req">*</span></label><input type="text" placeholder="Juan Pérez"></div>
+      <div class="form-row2">
+        <div class="form-group"><label>Email <span class="req">*</span></label><input type="email" placeholder="juan@empresa.com"></div>
+        <div class="form-group"><label>Teléfono</label><input type="tel" placeholder="+54 11 1234-5678"></div>
+      </div>
+      <div class="form-group"><label>Contraseña <span class="req">*</span></label><input type="password" placeholder="Mínimo 8 caracteres"></div>
+      <div class="form-group"><label>Confirmar contraseña <span class="req">*</span></label><input type="password" placeholder="Repetí la contraseña"></div>
+    </div>
+
+    <div class="form-section" data-ton="6">
+      <div style="font-weight:600;font-size:14px;color:#334155;margin-bottom:.75rem;">Subdominio de tu plataforma</div>
+      <div style="display:flex;align-items:center;border:1px solid var(--gray-bd);border-radius:7px;overflow:hidden;margin-bottom:1rem;">
+        <input type="text" id="ton-subdomain" placeholder="miempresa" style="border:none;flex:1;padding:10px 12px;font-size:14px;">
+        <div style="background:#F8FAFC;padding:10px 12px;font-size:13px;color:var(--gray-txt);border-left:1px solid var(--gray-bd);white-space:nowrap;">.smartdispatch.app</div>
+      </div>
+      <div id="subdomain-ok" style="display:none;" class="card card-green" style="padding:.75rem;">
+        <span style="color:var(--green);font-size:13px;">✓ Subdominio disponible</span>
+      </div>
+      <div style="font-weight:600;font-size:14px;color:#334155;margin:.85rem 0 .5rem;">Idioma predeterminado</div>
+      <div style="display:flex;gap:.65rem;">
+        <label style="display:flex;align-items:center;gap:.5rem;font-size:13px;cursor:pointer;"><input type="radio" name="ton-lang" value="es" checked> Español</label>
+        <label style="display:flex;align-items:center;gap:.5rem;font-size:13px;cursor:pointer;"><input type="radio" name="ton-lang" value="en"> English</label>
+        <label style="display:flex;align-items:center;gap:.5rem;font-size:13px;cursor:pointer;"><input type="radio" name="ton-lang" value="pt"> Português</label>
+      </div>
+    </div>
+
+    <div class="form-section" data-ton="7">
+      <div style="font-weight:600;font-size:14px;color:#334155;margin-bottom:.75rem;">Invitá conductores (opcional)</div>
+      <div class="form-group"><label>Emails de conductores (uno por línea)</label>
+        <textarea id="ton-emails" rows="4" placeholder="conductor1@email.com&#10;conductor2@email.com&#10;conductor3@email.com"></textarea>
+      </div>
+      <div style="font-size:12px;color:var(--gray-txt);margin-top:.35rem;">También podés importar desde CSV o invitar después del registro.</div>
+      <button class="btn btn-gray btn-sm" style="margin-top:.75rem;">📄 Importar CSV</button>
+    </div>
+
+    <div class="form-section" data-ton="8">
+      <div class="card card-green" style="margin-bottom:1rem;">
+        <h4 style="color:var(--green);font-size:14px;font-weight:700;margin-bottom:.5rem;">🎉 ¡Todo listo para lanzar!</h4>
+        <div style="font-size:13px;color:#2E7D32;line-height:1.7;">
+          Tu plataforma estará activa en <strong>menos de 5 minutos</strong>.<br>
+          Recibirás un email de confirmación con el link de acceso.
+        </div>
+      </div>
+      <div class="card" style="margin-bottom:.75rem;">
+        <div style="font-size:12px;color:var(--gray-txt);margin-bottom:.65rem;font-weight:600;text-transform:uppercase;letter-spacing:.04em;">Resumen</div>
+        <div class="metric-row"><span class="metric-name">Empresa</span><span class="metric-val" id="ton-summary-name">—</span></div>
+        <div class="metric-row"><span class="metric-name">Plan</span><span class="metric-val">Pro — $1,499/mes</span></div>
+        <div class="metric-row"><span class="metric-name">Subdominio</span><span class="metric-val" id="ton-summary-sub">—</span></div>
+        <div class="metric-row"><span class="metric-name">Conductores invitados</span><span class="metric-val" id="ton-summary-inv">0</span></div>
+      </div>
+      <label style="display:flex;gap:.5rem;align-items:flex-start;font-size:12px;color:var(--gray-txt);cursor:pointer;margin-bottom:.5rem;">
+        <input type="checkbox" checked style="margin-top:2px;"> Acepto los <a href="#" style="color:var(--blue-dk);">términos y condiciones</a>
+      </label>
+      <label style="display:flex;gap:.5rem;align-items:flex-start;font-size:12px;color:var(--gray-txt);cursor:pointer;">
+        <input type="checkbox"> Quiero recibir novedades y actualizaciones del producto
+      </label>
+    </div>
+
+    <div style="display:flex;gap:.65rem;margin-top:1.5rem;justify-content:flex-end;">
+      <button class="btn btn-gray btn-sm" id="ton-prev" onclick="tonStep(-1)" style="display:none;">← Anterior</button>
+      <button class="btn btn-sm" id="ton-next" onclick="tonStep(1)">Siguiente →</button>
+      <button class="btn btn-green btn-sm" id="ton-submit" onclick="tonSubmit()" style="display:none;">✓ Crear empresa</button>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ════════════════════════════════════════════
+     MAIN APP VIEW
+════════════════════════════════════════════ -->
+<div id="app-view" style="display:none;">
+
+<div class="app-header">
+  <div>
+    <h1 id="hdr-title">🚚 Smart Dispatch</h1>
+    <p id="hdr-sub">Logant · Logística Antártica</p>
+  </div>
+  <div class="hdr-right">
+    <button class="hdr-btn" onclick="toggleLang()" id="lang-btn">EN</button>
+    <div class="pill" id="user-pill">👤 —</div>
+    <div class="pill" id="version-pill" style="background:rgba(39,80,10,.3);border-color:rgba(39,80,10,.5);">MVP</div>
+    <button class="hdr-btn" onclick="showNotifications()" id="notif-btn" style="position:relative;">🔔 <span id="notif-count" style="position:absolute;top:-2px;right:-2px;background:#E65100;color:#fff;border-radius:50%;width:14px;height:14px;font-size:9px;display:flex;align-items:center;justify-content:center;">3</span></button>
+    <button class="hdr-btn" onclick="doLogout()">Salir</button>
+  </div>
+</div>
+
+<div class="nav-tabs" id="nav-tabs"></div>
+
+<div class="content">
+
+  <!-- ══════════ CONDUCTOR VIEW ══════════ -->
+  <div id="conductor-view" class="view">
+
+    <!-- Screen 1: Trip list -->
+    <div id="sc-list" class="screen active">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem;flex-wrap:wrap;gap:.5rem;">
+        <div>
+          <h2 class="section-title" style="margin:0;" id="sl-title">Viajes Disponibles</h2>
+          <p style="font-size:12px;color:var(--gray-txt);" id="sl-sub">Elegí un viaje y hacé una oferta competitiva</p>
+        </div>
+        <span class="version-badge badge-mvp">MVP</span>
+      </div>
+      <div id="trips-container"></div>
+    </div>
+
+    <!-- Screen 2: Trip detail -->
+    <div id="sc-detail" class="screen">
+      <button class="back-btn" onclick="goScreen('sc-list')">← <span id="sd-back">Volver al listado</span></button>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem;">
+        <h2 class="section-title" style="margin:0;" id="sd-title">Detalle del Viaje</h2>
+        <span class="version-badge badge-mvp">MVP</span>
+      </div>
+      <div class="card card-blue" style="margin-bottom:.85rem;">
+        <strong id="det-route"></strong> &nbsp;|&nbsp; <span id="det-meta"></span>
+      </div>
+      <div class="dgrid">
+        <div class="dgrid-item"><div class="dgrid-lbl" id="sd-origin-lbl">Origen</div><div class="dgrid-val" id="det-origin">—</div></div>
+        <div class="dgrid-item"><div class="dgrid-lbl" id="sd-dest-lbl">Destino</div><div class="dgrid-val" id="det-dest">—</div></div>
+        <div class="dgrid-item"><div class="dgrid-lbl" id="sd-km-lbl">Distancia</div><div class="dgrid-val" id="det-km">—</div></div>
+        <div class="dgrid-item"><div class="dgrid-lbl" id="sd-cargo-lbl">Carga</div><div class="dgrid-val" id="det-cargo">—</div></div>
+        <div class="dgrid-item"><div class="dgrid-lbl" id="sd-weight-lbl">Peso</div><div class="dgrid-val" id="det-weight">—</div></div>
+        <div class="dgrid-item"><div class="dgrid-lbl" id="sd-urgency-lbl">Urgencia</div><div class="dgrid-val" id="det-urgency">—</div></div>
+      </div>
+      <div class="compat-box">
+        <div class="compat-title" id="sd-compat-t">✅ Compatibilidad con tu perfil</div>
+        <div class="compat-row">✓ <span id="sd-c1">Licencia C2 válida</span></div>
+        <div class="compat-row">✓ <span id="sd-c2">Capacidad de carga: 10 tn</span></div>
+        <div class="compat-row">✓ <span id="det-compat-cargo"></span></div>
+        <div class="compat-row">✓ <span id="sd-c4">Seguros al día</span></div>
+        <div class="compat-row">✓ <span id="sd-c5">Sin infracciones</span></div>
+      </div>
+      <div class="score-box">
+        <div class="score-lbl" id="sd-score-lbl">Score de compatibilidad</div>
+        <div class="score-num">95%</div>
+        <div class="score-desc" id="sd-score-desc">Excelentes probabilidades de ganar</div>
+      </div>
+      <div class="offer-box">
+        <div style="font-size:11px;color:#94A3B8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:.5rem;" id="sd-offer-lbl">Tu Oferta ($)</div>
+        <div class="offer-row">
+          <input type="number" id="offer-input" placeholder="45000">
+          <button class="btn btn-green" onclick="sendOffer()" id="sd-offer-btn">Hacer oferta →</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Screen 3: Offer sent -->
+    <div id="sc-offered" class="screen">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem;">
+        <h2 class="section-title" style="margin:0;" id="so-title">✅ Tu oferta fue enviada</h2>
+        <span class="version-badge badge-mvp">MVP</span>
+      </div>
+      <div class="card card-green" style="text-align:center;padding:1.5rem;margin-bottom:.85rem;">
+        <div style="font-size:30px;margin-bottom:.4rem;">🎉</div>
+        <h3 style="color:var(--green);" id="so-reg">Oferta registrada</h3>
+        <p id="offer-confirm-text" style="color:#388E3C;margin-top:.25rem;font-size:13px;"></p>
+      </div>
+      <h3 class="section-title" id="so-rank">Ranking en vivo</h3>
+      <div class="card" id="ranking-offered" style="padding:.5rem;"></div>
+      <div class="cd-box" style="margin-top:.85rem;">
+        <p style="color:#888;font-size:12px;margin-bottom:.4rem;" id="so-closes">Subasta cierra en:</p>
+        <div class="cd-num" id="cd-offered">60</div>
+        <div class="cd-lbl" id="so-secs">segundos</div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-gray" onclick="goScreen('sc-detail')">←</button>
+        <button class="btn" onclick="goScreen('sc-waiting')" id="so-live">Ver en vivo →</button>
+      </div>
+    </div>
+
+    <!-- Screen 4: Waiting -->
+    <div id="sc-waiting" class="screen">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem;">
+        <h2 class="section-title" style="margin:0;" id="sw-title">⏳ Esperando resultado</h2>
+        <span class="version-badge badge-mvp">MVP</span>
+      </div>
+      <div style="text-align:center;margin-bottom:1rem;">
+        <div style="font-size:11px;color:#94A3B8;" id="sw-rating">Tu rating</div>
+        <div style="font-size:28px;margin:.2rem 0;">⭐⭐⭐⭐⭐</div>
+        <div style="font-weight:700;color:var(--blue-dk);">4.9 / 5.0</div>
+      </div>
+      <div class="cd-box">
+        <p style="color:#888;font-size:12px;margin-bottom:.4rem;" id="sw-result">Resultado en:</p>
+        <div class="cd-num" id="cd-waiting">45</div>
+        <div class="cd-lbl" id="sw-secs">segundos</div>
+      </div>
+      <h3 class="section-title" id="sw-rank">Ranking actualizado</h3>
+      <div class="card" id="ranking-waiting" style="padding:.5rem;"></div>
+      <div class="btn-row">
+        <button class="btn btn-gray" onclick="goScreen('sc-offered')">←</button>
+        <button class="btn btn-green" onclick="showWinner()" id="sw-result-btn">Ver resultado →</button>
+      </div>
+    </div>
+
+    <!-- Screen 5: Winner -->
+    <div id="sc-winner" class="screen">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem;">
+        <h2 class="section-title" style="margin:0;" id="swn-title">🎉 ¡Ganaste la subasta!</h2>
+        <span class="version-badge badge-mvp">MVP</span>
+      </div>
+      <div class="winner-box">
+        <div class="winner-icon">🏆</div>
+        <div class="winner-title" id="swn-cong">¡Felicidades!</div>
+        <div class="winner-sub" id="swn-sub">Tu oferta fue la más competitiva</div>
+        <div class="winner-detail">
+          <div class="winner-row"><span id="swn-route-lbl">Ruta</span><strong id="win-route">—</strong></div>
+          <div class="winner-row"><span id="swn-km-lbl">Distancia</span><strong id="win-km">—</strong></div>
+          <div class="winner-row"><span id="swn-offer-lbl">Tu oferta</span><strong id="win-offer" style="color:var(--green);">—</strong></div>
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-gray" onclick="goScreen('sc-waiting')">←</button>
+        <button class="btn btn-green" onclick="goScreen('sc-cargo')" id="swn-cargo">Ver datos de carga →</button>
+      </div>
+    </div>
+
+    <!-- Screen 6: Cargo -->
+    <div id="sc-cargo" class="screen">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem;">
+        <h2 class="section-title" style="margin:0;" id="sc2-title">📦 Datos de Carga</h2>
+        <span class="version-badge badge-mvp">MVP</span>
+      </div>
+      <div class="card card-green" style="margin-bottom:.85rem;"><strong id="cargo-route-label"></strong></div>
+      <div class="load-section">
+        <div class="load-title" id="sc2-pickup">📍 Recogida</div>
+        <div class="load-item"><div class="load-lbl">Dirección</div><div class="load-val">Av. Santa Fe 1234, CABA</div></div>
+        <div class="load-item"><div class="load-lbl">Teléfono</div><div class="load-val">+54 11 4567-8901</div></div>
+        <div class="load-item"><div class="load-lbl">Horario</div><div class="load-val">08:00 – 10:00 Mañana</div></div>
+      </div>
+      <div class="load-section">
+        <div class="load-title" id="sc2-delivery">🏪 Entrega</div>
+        <div class="load-item"><div class="load-lbl">Dirección</div><div class="load-val">Calle 7 No. 456, La Plata</div></div>
+        <div class="load-item"><div class="load-lbl">Teléfono</div><div class="load-val">+54 221 987-6543</div></div>
+        <div class="load-item"><div class="load-lbl">Horario</div><div class="load-val">14:00 – 16:00 Hoy</div></div>
+      </div>
+      <div class="load-section">
+        <div class="load-title" id="sc2-details">📋 Detalles</div>
+        <div class="load-item"><div class="load-lbl">Tipo</div><div class="load-val" id="cargo-type-label">—</div></div>
+        <div class="load-item"><div class="load-lbl">Peso</div><div class="load-val" id="cargo-weight-label">—</div></div>
+        <div class="load-item"><div class="load-lbl">Docs</div><div class="load-val">Factura + Albarán</div></div>
+        <div class="load-item"><div class="load-lbl">Notas</div><div class="load-val">Manejo cuidadoso. Verificar temperatura cada 2 horas</div></div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-gray" onclick="goScreen('sc-winner')">←</button>
+        <button class="btn btn-green btn-full" onclick="goScreen('sc-gps')" id="sc2-start">🚚 Empezar viaje</button>
+      </div>
+    </div>
+
+    <!-- Screen 7: GPS Live (V1.0) -->
+    <div id="sc-gps" class="screen">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem;">
+        <h2 class="section-title" style="margin:0;">🗺️ Viaje en Curso</h2>
+        <span class="version-badge badge-v1">V1.0</span>
+      </div>
+      <div class="card card-green" style="margin-bottom:.85rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem;">
+        <div>
+          <div style="font-weight:700;color:var(--green);font-size:14px;" id="gps-route">Buenos Aires → Rosario</div>
+          <div style="font-size:12px;color:#388E3C;">ETA: 14:45 hs · 2h 15min restantes</div>
+        </div>
+        <div class="status status-ok"><span class="dot"></span>En ruta</div>
+      </div>
+      <div class="gps-map">
+        <div class="gps-icon">📍</div>
+        <div class="gps-label">GPS Activo — Ruta Optimizada</div>
+        <div class="gps-sub">Ruta 9 → Acceso Norte · 180 km restantes</div>
+        <div style="margin-top:.85rem;font-size:11px;color:#0F6E56;opacity:.8;">Velocidad promedio: 87 km/h · Sin incidentes</div>
+      </div>
+      <div class="card">
+        <div class="load-title">📊 Estado del viaje</div>
+        <div class="metric-row"><span class="metric-name">✅ Recogida</span><span class="metric-val">10:30 hs</span></div>
+        <div class="metric-row"><span class="metric-name">🚚 En ruta desde</span><span class="metric-val">10:45 hs</span></div>
+        <div class="metric-row"><span class="metric-name">⏱ ETA entrega</span><span class="metric-val">14:45 hs</span></div>
+        <div class="metric-row"><span class="metric-name">📍 Distancia recorrida</span><span class="metric-val">120 km / 300 km</span></div>
+        <div class="metric-row"><span class="metric-name">💰 Pago estimado</span><span class="metric-val" id="gps-offer-val">—</span></div>
+      </div>
+      <div style="margin-top:1rem;display:flex;gap:.5rem;flex-wrap:wrap;">
+        <button class="btn btn-gray btn-sm">📞 Llamar a destino</button>
+        <button class="btn btn-gray btn-sm">⚠️ Reportar incidente</button>
+        <button class="btn btn-green btn-sm" onclick="alert('✅ Entrega confirmada. Viaje completado exitosamente.')">✅ Confirmar entrega</button>
+      </div>
+    </div>
+
+    <!-- Screen: Profile (V1.0) -->
+    <div id="sc-profile" class="screen">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem;">
+        <h2 class="section-title" style="margin:0;">👤 Mi Perfil</h2>
+        <span class="version-badge badge-v1">V1.0</span>
+      </div>
+      <div class="card" style="display:flex;align-items:center;gap:1rem;margin-bottom:.85rem;flex-wrap:wrap;">
+        <div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,var(--blue),var(--blue-dk));display:flex;align-items:center;justify-content:center;font-size:26px;color:#fff;flex-shrink:0;">👤</div>
+        <div style="flex:1;">
+          <div style="font-size:18px;font-weight:800;color:#1A202C;">Carlos Díaz</div>
+          <div style="font-size:13px;color:var(--gray-txt);">Conductor verificado</div>
+          <div style="display:flex;align-items:center;gap:.5rem;margin-top:.35rem;flex-wrap:wrap;">
+            <span style="font-size:13px;">⭐ 4.9</span>
+            <span style="font-size:12px;color:var(--gray-txt);">· 47 viajes completados</span>
+            <span class="status status-ok" style="font-size:11px;"><span class="dot"></span>Aprobado</span>
+          </div>
+        </div>
+        <button class="btn btn-gray btn-sm">✏️ Editar</button>
+      </div>
+      <div class="admin-tabs">
+        <button class="admin-tab active" onclick="switchProfileTab('pt-data',this)">Datos personales</button>
+        <button class="admin-tab" onclick="switchProfileTab('pt-docs',this)">Documentos</button>
+        <button class="admin-tab" onclick="switchProfileTab('pt-vehicle',this)">Vehículo</button>
+      </div>
+      <div id="pt-data" class="tab-pane active">
+        <div class="card">
+          <div class="metric-row"><span class="metric-name">Nombre completo</span><span class="metric-val">Carlos Díaz</span></div>
+          <div class="metric-row"><span class="metric-name">DNI</span><span class="metric-val">25.845.632</span></div>
+          <div class="metric-row"><span class="metric-name">Teléfono</span><span class="metric-val">+54 11 9876-5432</span></div>
+          <div class="metric-row"><span class="metric-name">Email</span><span class="metric-val">carlos@email.com</span></div>
+          <div class="metric-row"><span class="metric-name">Domicilio</span><span class="metric-val">Av. Rivadavia 2345, CABA</span></div>
+          <div class="metric-row"><span class="metric-name">Nacimiento</span><span class="metric-val">15/03/1985</span></div>
+        </div>
+      </div>
+      <div id="pt-docs" class="tab-pane">
+        <div class="card">
+          <div class="metric-row"><span class="metric-name">📋 Licencia C2</span><span><span class="status status-ok">✓ Válida · Vence 12/2026</span></span></div>
+          <div class="metric-row"><span class="metric-name">🛡️ Póliza RCO</span><span><span class="status status-ok">✓ Al día · Vence 08/2025</span></span></div>
+          <div class="metric-row"><span class="metric-name">🔧 RTO</span><span><span class="status status-warn">⚠ Vence en 45 días</span></span></div>
+          <div class="metric-row"><span class="metric-name">📄 Antecedentes</span><span><span class="status status-ok">✓ Sin antecedentes</span></span></div>
+        </div>
+      </div>
+      <div id="pt-vehicle" class="tab-pane">
+        <div class="card">
+          <div class="metric-row"><span class="metric-name">Patente</span><span class="metric-val">AC 254 BT</span></div>
+          <div class="metric-row"><span class="metric-name">Marca / Modelo</span><span class="metric-val">Scania R450</span></div>
+          <div class="metric-row"><span class="metric-name">Año</span><span class="metric-val">2019</span></div>
+          <div class="metric-row"><span class="metric-name">Capacidad</span><span class="metric-val">25.000 kg</span></div>
+          <div class="metric-row"><span class="metric-name">Tipo</span><span class="metric-val">Semi-remolque</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Screen: History (V1.0) -->
+    <div id="sc-history" class="screen">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem;">
+        <h2 class="section-title" style="margin:0;">📋 Historial de Viajes</h2>
+        <span class="version-badge badge-v1">V1.0</span>
+      </div>
+      <div style="display:flex;gap:.5rem;margin-bottom:.85rem;flex-wrap:wrap;">
+        <select class="btn btn-gray btn-sm" style="padding:6px 12px;font-weight:500;"><option>Todos</option><option>Completados</option><option>Cancelados</option></select>
+        <select class="btn btn-gray btn-sm" style="padding:6px 12px;font-weight:500;"><option>Último mes</option><option>Últimos 3 meses</option><option>2024</option></select>
+        <button class="btn btn-gray btn-sm" onclick="alert('CSV descargado: historial_viajes_mayo2025.csv')">📥 Exportar CSV</button>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Fecha</th><th>Ruta</th><th>Cargo</th><th>Pago</th><th>Estado</th></tr></thead>
+          <tbody id="history-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Screen: Notifications (V1.0) -->
+    <div id="sc-notifications" class="screen">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem;">
+        <h2 class="section-title" style="margin:0;">🔔 Notificaciones</h2>
+        <span class="version-badge badge-v1">V1.0</span>
+      </div>
+      <div class="card">
+        <div class="notif-item">
+          <div class="notif-icon notif-icon-green">🏆</div>
+          <div class="notif-text" style="flex:1;">
+            <h4>¡Ganaste la subasta!</h4>
+            <p>Buenos Aires → Rosario · $44,200 · Hoy 10:35</p>
+          </div>
+          <div class="notif-dot"></div>
+        </div>
+        <div class="notif-item">
+          <div class="notif-icon notif-icon-blue">🚚</div>
+          <div class="notif-text" style="flex:1;">
+            <h4>Nuevo viaje disponible</h4>
+            <p>CABA → La Plata · $8,500 · Hace 15 min</p>
+          </div>
+          <div class="notif-dot"></div>
+        </div>
+        <div class="notif-item">
+          <div class="notif-icon notif-icon-blue">🚚</div>
+          <div class="notif-text" style="flex:1;">
+            <h4>Nuevo viaje disponible</h4>
+            <p>Córdoba → Mendoza · $92,000 · Hace 32 min</p>
+          </div>
+          <div class="notif-dot"></div>
+        </div>
+        <div class="notif-item">
+          <div class="notif-icon notif-icon-orange">⚠️</div>
+          <div class="notif-text" style="flex:1;">
+            <h4>RTO próximo a vencer</h4>
+            <p>Tu revisión técnica vence en 45 días · Renovar ahora</p>
+          </div>
+        </div>
+        <div class="notif-item" style="opacity:.6;">
+          <div class="notif-icon" style="background:#F1F5F9;">📋</div>
+          <div class="notif-text" style="flex:1;">
+            <h4>Perfil completado</h4>
+            <p>Todos tus documentos fueron aprobados · Hace 3 días</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /conductor-view -->
+
+  <!-- ══════════ ADMIN LOGANT VIEW ══════════ -->
+  <div id="admin-view" class="view">
+
+    <div class="admin-tabs">
+      <button class="admin-tab active" onclick="switchAdminTab('at-dashboard',this)">📊 Dashboard</button>
+      <button class="admin-tab" onclick="switchAdminTab('at-create',this)">➕ Crear viaje</button>
+      <button class="admin-tab" onclick="switchAdminTab('at-auctions',this)">🏆 Subastas</button>
+      <button class="admin-tab" onclick="switchAdminTab('at-drivers',this)">👥 Conductores</button>
+      <button class="admin-tab" onclick="switchAdminTab('at-reports',this)">📈 Reportes <span class="version-badge badge-v1" style="vertical-align:middle;">V1</span></button>
+      <button class="admin-tab" onclick="switchAdminTab('at-config',this)">⚙️ Config <span class="version-badge badge-v1" style="vertical-align:middle;">V1</span></button>
+    </div>
+
+    <!-- Dashboard -->
+    <div id="at-dashboard" class="tab-pane active">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1rem;flex-wrap:wrap;gap:.5rem;">
+        <div>
+          <h2 style="font-size:18px;font-weight:700;color:#1A202C;margin-bottom:3px;">Panel de Control</h2>
+          <p style="font-size:12px;color:var(--gray-txt);">Logant · Logística Antártica · Mayo 2025</p>
+        </div>
+        <span class="version-badge badge-mvp">MVP</span>
+      </div>
+      <div class="kpi-grid">
+        <div class="kpi-card"><div class="kpi-lbl">Subastas activas</div><div class="kpi-val">5</div><div class="kpi-sub">↑ 2 vs ayer</div></div>
+        <div class="kpi-card"><div class="kpi-lbl">Ofertas hoy</div><div class="kpi-val">23</div><div class="kpi-sub">4.6 por viaje</div></div>
+        <div class="kpi-card"><div class="kpi-lbl">Viajes en curso</div><div class="kpi-val">8</div><div class="kpi-sub">↑ 1 vs ayer</div></div>
+        <div class="kpi-card"><div class="kpi-lbl">Conductores activos</div><div class="kpi-val">42</div><div class="kpi-sub">88% disponibles</div></div>
+        <div class="kpi-card"><div class="kpi-lbl">OCT promedio</div><div class="kpi-val">18 min</div><div class="kpi-sub">↓ 3 min vs sem anterior</div></div>
+        <div class="kpi-card"><div class="kpi-lbl">Ahorro estimado</div><div class="kpi-val">$12.4k</div><div class="kpi-sub">vs asignación manual</div></div>
+      </div>
+      <h3 class="section-title">Subastas activas ahora</h3>
+      <div id="dash-auctions"></div>
+    </div>
+
+    <!-- Create trip -->
+    <div id="at-create" class="tab-pane">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+        <h3 style="color:var(--blue-dk);font-size:16px;font-weight:700;">➕ Crear nuevo viaje</h3>
+        <span class="version-badge badge-mvp">MVP</span>
+      </div>
+      <div class="card">
+        <div class="form-row2">
+          <div class="form-group"><label>Origen <span class="req">*</span></label><input type="text" id="new-origin" placeholder="Buenos Aires"></div>
+          <div class="form-group"><label>Destino <span class="req">*</span></label><input type="text" id="new-dest" placeholder="Rosario"></div>
+        </div>
+        <div class="form-row2">
+          <div class="form-group"><label>Distancia (km) <span class="req">*</span></label><input type="number" id="new-km" placeholder="300"></div>
+          <div class="form-group"><label>Precio base ($) <span class="req">*</span></label><input type="number" id="new-price" placeholder="45000"></div>
+        </div>
+        <div class="form-row2">
+          <div class="form-group"><label>Tipo de carga <span class="req">*</span></label><input type="text" id="new-cargo" placeholder="Bebidas"></div>
+          <div class="form-group"><label>Urgencia</label>
+            <select id="new-urgency"><option>Normal</option><option>Urgente</option><option>Muy Urgente</option></select>
+          </div>
+        </div>
+        <div class="form-row2">
+          <div class="form-group"><label>Peso (tn)</label><input type="number" id="new-weight" placeholder="8"></div>
+          <div class="form-group"><label>Tipo de transporte</label>
+            <select id="new-type"><option>Refrigerado</option><option>Carga general</option><option>Electrónica</option><option>Alimentos</option></select>
+          </div>
+        </div>
+        <button class="btn btn-green btn-full" onclick="createTrip()">✓ Crear viaje</button>
+      </div>
+    </div>
+
+    <!-- Auctions -->
+    <div id="at-auctions" class="tab-pane">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.85rem;">
+        <h3 class="section-title" style="margin:0;">🏆 Subastas en tiempo real</h3>
+        <span class="version-badge badge-mvp">MVP</span>
+      </div>
+      <div id="auctions-container"></div>
+    </div>
+
+    <!-- Drivers -->
+    <div id="at-drivers" class="tab-pane">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.85rem;">
+        <h3 class="section-title" style="margin:0;">👥 Gestión de conductores</h3>
+        <span class="version-badge badge-mvp">MVP</span>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Nombre</th><th>DNI</th><th>Docs</th><th>Estado</th><th>Viajes</th><th>Acción</th></tr></thead>
+          <tbody id="drivers-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Reports (V1.0) -->
+    <div id="at-reports" class="tab-pane">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.85rem;">
+        <h3 class="section-title" style="margin:0;">📈 Reportes & Analytics</h3>
+        <span class="version-badge badge-v1">V1.0</span>
+      </div>
+      <div style="display:flex;gap:.5rem;margin-bottom:1rem;flex-wrap:wrap;">
+        <select class="btn btn-gray btn-sm" style="padding:6px 12px;font-weight:500;"><option>Mayo 2025</option><option>Abril 2025</option><option>Q1 2025</option></select>
+        <button class="btn btn-gray btn-sm" onclick="alert('Reporte exportado: analytics_mayo2025.pdf')">📥 Exportar PDF</button>
+      </div>
+      <div class="kpi-grid">
+        <div class="kpi-card"><div class="kpi-lbl">OCT Promedio</div><div class="kpi-val" style="color:var(--green);">18 min</div><div class="kpi-sub">↓ 67% vs manual (55 min)</div></div>
+        <div class="kpi-card"><div class="kpi-lbl">Ahorro mensual</div><div class="kpi-val" style="color:var(--green);">$48k</div><div class="kpi-sub">vs proceso anterior</div></div>
+        <div class="kpi-card"><div class="kpi-lbl">Tasa de adopción</div><div class="kpi-val">87%</div><div class="kpi-sub">conductores activos</div></div>
+        <div class="kpi-card"><div class="kpi-lbl">Viajes completados</div><div class="kpi-val">247</div><div class="kpi-sub">Este mes</div></div>
+      </div>
+      <div class="card" style="margin-bottom:.75rem;">
+        <div style="font-weight:700;font-size:14px;color:#1A202C;margin-bottom:.85rem;">🏆 Top conductores del mes</div>
+        <div class="chart-row"><div class="chart-lbl">Juan Martínez</div><div class="chart-bar-wrap"><div class="chart-bar" style="width:92%;background:var(--green);">$187k</div></div><div class="chart-val">24 viajes</div></div>
+        <div class="chart-row"><div class="chart-lbl">María González</div><div class="chart-bar-wrap"><div class="chart-bar" style="width:78%;background:var(--blue);">$159k</div></div><div class="chart-val">20 viajes</div></div>
+        <div class="chart-row"><div class="chart-lbl">Carlos López</div><div class="chart-bar-wrap"><div class="chart-bar" style="width:65%;background:var(--orange);">$133k</div></div><div class="chart-val">17 viajes</div></div>
+        <div class="chart-row"><div class="chart-lbl">Ana Martínez</div><div class="chart-bar-wrap"><div class="chart-bar" style="width:55%;background:var(--blue);">$112k</div></div><div class="chart-val">15 viajes</div></div>
+        <div class="chart-row"><div class="chart-lbl">Roberto Díaz</div><div class="chart-bar-wrap"><div class="chart-bar" style="width:43%;background:var(--gray-txt);">$88k</div></div><div class="chart-val">12 viajes</div></div>
+      </div>
+      <div class="card">
+        <div style="font-weight:700;font-size:14px;color:#1A202C;margin-bottom:.85rem;">📊 Métricas clave</div>
+        <div class="metric-row"><span class="metric-name">Precio promedio por viaje</span><span class="metric-val">$43,200 <span class="metric-delta delta-pos">↓ 3.2%</span></span></div>
+        <div class="metric-row"><span class="metric-name">Conductores que ganan 1ª oferta</span><span class="metric-val">34% <span class="metric-delta delta-pos">↑ 5%</span></span></div>
+        <div class="metric-row"><span class="metric-name">Promedio de ofertas por viaje</span><span class="metric-val">4.8 <span class="metric-delta delta-pos">↑ 0.6</span></span></div>
+        <div class="metric-row"><span class="metric-name">Viajes cancelados</span><span class="metric-val">3 <span class="metric-delta delta-neg">↑ 1</span></span></div>
+        <div class="metric-row"><span class="metric-name">NPS conductores</span><span class="metric-val">72 <span class="metric-delta delta-pos">↑ 8</span></span></div>
+      </div>
+    </div>
+
+    <!-- Config (V1.0) -->
+    <div id="at-config" class="tab-pane">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.85rem;">
+        <h3 class="section-title" style="margin:0;">⚙️ Configuración del Tenant</h3>
+        <span class="version-badge badge-v1">V1.0</span>
+      </div>
+      <div class="card" style="margin-bottom:.75rem;">
+        <div style="font-weight:700;font-size:14px;color:#1A202C;margin-bottom:.85rem;">🎨 Identidad visual</div>
+        <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1rem;flex-wrap:wrap;">
+          <div style="width:72px;height:72px;background:linear-gradient(135deg,var(--blue),var(--blue-dk));border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:28px;color:#fff;">🚚</div>
+          <div>
+            <div style="font-weight:600;font-size:14px;margin-bottom:.35rem;">Logant</div>
+            <button class="btn btn-gray btn-sm">Cambiar logo</button>
+          </div>
+        </div>
+        <div class="form-row2">
+          <div class="form-group"><label>Color primario</label>
+            <div style="display:flex;align-items:center;gap:.5rem;">
+              <div style="width:32px;height:32px;background:var(--blue-dk);border-radius:6px;border:2px solid var(--gray-bd);"></div>
+              <input type="text" value="#0C447C" style="flex:1;">
+            </div>
+          </div>
+          <div class="form-group"><label>Color secundario</label>
+            <div style="display:flex;align-items:center;gap:.5rem;">
+              <div style="width:32px;height:32px;background:var(--green);border-radius:6px;border:2px solid var(--gray-bd);"></div>
+              <input type="text" value="#27500A" style="flex:1;">
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card" style="margin-bottom:.75rem;">
+        <div style="font-weight:700;font-size:14px;color:#1A202C;margin-bottom:.85rem;">🌐 Acceso y dominio</div>
+        <div class="metric-row"><span class="metric-name">Subdominio</span><span class="metric-val">logant.smartdispatch.app</span></div>
+        <div class="metric-row"><span class="metric-name">Dominio propio</span><span><span class="status status-warn">⚠ No configurado</span></span></div>
+        <div class="metric-row"><span class="metric-name">Idioma default</span><span class="metric-val">Español</span></div>
+        <div style="margin-top:.75rem;">
+          <button class="btn btn-gray btn-sm">Configurar dominio propio</button>
+        </div>
+      </div>
+      <div class="card">
+        <div style="font-weight:700;font-size:14px;color:#1A202C;margin-bottom:.85rem;">👥 Administradores</div>
+        <div class="metric-row"><span class="metric-name">Juan Pérez (owner)</span><span><span class="status status-ok">Admin</span></span></div>
+        <div class="metric-row"><span class="metric-name">María González</span><span><span class="status status-info">Operador</span></span></div>
+        <div style="margin-top:.75rem;">
+          <button class="btn btn-sm" onclick="alert('Invitar nuevo administrador')">➕ Invitar admin</button>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /admin-view -->
+
+  <!-- ══════════ SUPER ADMIN VIEW ══════════ -->
+  <div id="super-view" class="view">
+    <div class="admin-tabs">
+      <button class="admin-tab active" onclick="switchSuperTab('st-dashboard',this)">🌐 Dashboard</button>
+      <button class="admin-tab" onclick="switchSuperTab('st-tenants',this)">🏢 Tenants</button>
+      <button class="admin-tab" onclick="switchSuperTab('st-billing',this)">💳 Billing</button>
+      <button class="admin-tab" onclick="switchSuperTab('st-logs',this)">📋 Logs</button>
+      <button class="admin-tab" onclick="switchSuperTab('st-i18n',this)">🌍 i18n</button>
+      <button class="admin-tab" onclick="switchSuperTab('st-pwa',this)">📱 PWA</button>
+      <button class="admin-tab" onclick="switchSuperTab('st-api',this)">🔗 API</button>
+      <button class="admin-tab" onclick="switchSuperTab('st-push',this)">📣 Push</button>
+    </div>
+
+    <!-- Super Dashboard -->
+    <div id="st-dashboard" class="tab-pane active">
+      <div class="sa-header">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:.5rem;">
+          <div>
+            <h2>🌐 Super Admin — Smart Dispatch</h2>
+            <p>Vista global de todos los tenants · Mayo 2025</p>
+          </div>
+          <span class="version-badge badge-v2">V2.0</span>
+        </div>
+      </div>
+      <div class="kpi-grid">
+        <div class="kpi-card"><div class="kpi-lbl">Tenants activos</div><div class="kpi-val">12</div><div class="kpi-sub">↑ 3 este mes</div></div>
+        <div class="kpi-card"><div class="kpi-lbl">MRR</div><div class="kpi-val" style="color:var(--green);">$18.4k</div><div class="kpi-sub">↑ 22% vs abril</div></div>
+        <div class="kpi-card"><div class="kpi-lbl">Conductores globales</div><div class="kpi-val">486</div><div class="kpi-sub">Todos los tenants</div></div>
+        <div class="kpi-card"><div class="kpi-lbl">Viajes hoy</div><div class="kpi-val">134</div><div class="kpi-sub">En 8 tenants</div></div>
+        <div class="kpi-card"><div class="kpi-lbl">ARR proyectado</div><div class="kpi-val" style="color:var(--green);">$221k</div><div class="kpi-sub">+34% YoY</div></div>
+        <div class="kpi-card"><div class="kpi-lbl">Churn rate</div><div class="kpi-val" style="color:var(--orange);">0%</div><div class="kpi-sub">Sin bajas este mes</div></div>
+      </div>
+      <div class="card">
+        <div style="font-weight:700;font-size:14px;color:#1A202C;margin-bottom:.85rem;">📊 MRR por plan</div>
+        <div class="chart-row"><div class="chart-lbl">Enterprise</div><div class="chart-bar-wrap"><div class="chart-bar" style="width:72%;background:var(--purple);">$13,200</div></div><div class="chart-val">3 clientes</div></div>
+        <div class="chart-row"><div class="chart-lbl">Pro</div><div class="chart-bar-wrap"><div class="chart-bar" style="width:38%;background:var(--blue);">$7,000</div></div><div class="chart-val">5 clientes</div></div>
+        <div class="chart-row"><div class="chart-lbl">Starter</div><div class="chart-bar-wrap"><div class="chart-bar" style="width:20%;background:var(--gray-txt);">$2,000</div></div><div class="chart-val">4 clientes</div></div>
+      </div>
+    </div>
+
+    <!-- Tenants -->
+    <div id="st-tenants" class="tab-pane">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.85rem;">
+        <h3 class="section-title" style="margin:0;">🏢 Gestión de Tenants</h3>
+        <div style="display:flex;gap:.5rem;align-items:center;">
+          <span class="version-badge badge-v2">V2.0</span>
+          <button class="btn btn-sm" onclick="alert('Crear nuevo tenant')">➕ Nuevo</button>
+        </div>
+      </div>
+      <div id="tenants-list"></div>
+    </div>
+
+    <!-- Billing -->
+    <div id="st-billing" class="tab-pane">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.85rem;">
+        <h3 class="section-title" style="margin:0;">💳 Billing Global</h3>
+        <span class="version-badge badge-v2">V2.0</span>
+      </div>
+      <div class="kpi-grid" style="grid-template-columns:repeat(3,1fr);">
+        <div class="kpi-card"><div class="kpi-lbl">MRR</div><div class="kpi-val" style="color:var(--green);">$18,400</div></div>
+        <div class="kpi-card"><div class="kpi-lbl">ARR</div><div class="kpi-val" style="color:var(--green);">$220,800</div></div>
+        <div class="kpi-card"><div class="kpi-lbl">Próximas facturaciones</div><div class="kpi-val">8</div></div>
+      </div>
+      <div class="card">
+        <div style="font-weight:700;font-size:14px;color:#1A202C;margin-bottom:.85rem;">Facturación por tenant — Mayo 2025</div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Empresa</th><th>Plan</th><th>Monto</th><th>Fecha</th><th>Estado</th></tr></thead>
+            <tbody>
+              <tr><td><strong>Logant</strong></td><td>Enterprise</td><td style="font-weight:700;color:var(--green);">$4,800</td><td>01/05/2025</td><td><span class="status status-ok">Pagado</span></td></tr>
+              <tr><td><strong>CargaYa</strong></td><td>Enterprise</td><td style="font-weight:700;color:var(--green);">$4,800</td><td>01/05/2025</td><td><span class="status status-ok">Pagado</span></td></tr>
+              <tr><td><strong>FlexFlete</strong></td><td>Pro</td><td style="font-weight:700;color:var(--green);">$1,499</td><td>03/05/2025</td><td><span class="status status-ok">Pagado</span></td></tr>
+              <tr><td><strong>AgroTrans</strong></td><td>Pro</td><td style="font-weight:700;color:var(--green);">$1,499</td><td>05/05/2025</td><td><span class="status status-warn">Pendiente</span></td></tr>
+              <tr><td><strong>MovilCarga</strong></td><td>Starter</td><td style="font-weight:700;color:var(--green);">$499</td><td>07/05/2025</td><td><span class="status status-ok">Pagado</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Logs -->
+    <div id="st-logs" class="tab-pane">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.85rem;">
+        <h3 class="section-title" style="margin:0;">📋 Logs de Auditoría</h3>
+        <span class="version-badge badge-v2">V2.0</span>
+      </div>
+      <div style="display:flex;gap:.5rem;margin-bottom:.85rem;flex-wrap:wrap;">
+        <select class="btn btn-gray btn-sm" style="padding:6px 12px;font-weight:500;"><option>Todos los eventos</option><option>Login</option><option>Viajes</option><option>Pagos</option><option>Errores</option></select>
+        <select class="btn btn-gray btn-sm" style="padding:6px 12px;font-weight:500;"><option>Todos los tenants</option><option>Logant</option><option>CargaYa</option></select>
+        <button class="btn btn-gray btn-sm" onclick="alert('Logs exportados')">📥 Exportar</button>
+      </div>
+      <div class="card">
+        <div class="log-row"><div class="log-time">10:47:23</div><div class="log-action"><span class="log-user">admin@logant.com</span> asignó viaje BA→ROS a <span class="log-user">Juan M.</span></div><div style="color:#94A3B8;font-size:11px;flex-shrink:0;"><span class="log-tenant">Logant</span></div></div>
+        <div class="log-row"><div class="log-time">10:43:11</div><div class="log-action"><span class="log-user">carlos@conductor.com</span> envió oferta $44,200 en subasta #1048</div><div style="color:#94A3B8;font-size:11px;flex-shrink:0;"><span class="log-tenant">Logant</span></div></div>
+        <div class="log-row"><div class="log-time">10:38:05</div><div class="log-action"><span class="log-user">admin@cargaya.com</span> creó viaje GBA→MAR #1049</div><div style="color:#94A3B8;font-size:11px;flex-shrink:0;"><span class="log-tenant">CargaYa</span></div></div>
+        <div class="log-row"><div class="log-time">10:30:00</div><div class="log-action">Webhook <code style="background:#F1F5F9;padding:1px 5px;border-radius:3px;">trip.assigned</code> enviado → FlexFlete (200 OK)</div><div style="color:#94A3B8;font-size:11px;flex-shrink:0;"><span class="log-tenant">FlexFlete</span></div></div>
+        <div class="log-row"><div class="log-time">10:22:44</div><div class="log-action"><span class="log-user">maria@logant.com</span> aprobó conductor Roberto García</div><div style="color:#94A3B8;font-size:11px;flex-shrink:0;"><span class="log-tenant">Logant</span></div></div>
+        <div class="log-row"><div class="log-time">10:15:33</div><div class="log-action">Factura #INV-0048 generada para <span class="log-tenant">AgroTrans</span> — $1,499</div><div style="color:#94A3B8;font-size:11px;flex-shrink:0;"><span class="log-tenant">Sistema</span></div></div>
+        <div class="log-row"><div class="log-time">09:55:12</div><div class="log-action"><span class="log-user">superadmin@smartdispatch.app</span> login exitoso desde 190.22.x.x</div><div style="color:#94A3B8;font-size:11px;flex-shrink:0;"><span class="log-tenant">Sistema</span></div></div>
+        <div class="log-row"><div class="log-time">09:30:00</div><div class="log-action">Nuevo tenant <strong>MovilCarga</strong> activado — Plan Starter</div><div style="color:#94A3B8;font-size:11px;flex-shrink:0;"><span class="log-tenant">Sistema</span></div></div>
+      </div>
+    </div>
+
+    <!-- i18n -->
+    <div id="st-i18n" class="tab-pane">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.85rem;">
+        <h3 class="section-title" style="margin:0;">🌍 Panel de Traducciones</h3>
+        <span class="version-badge badge-v2">V2.0</span>
+      </div>
+      <div style="display:flex;gap:.5rem;margin-bottom:1rem;align-items:center;flex-wrap:wrap;">
+        <div style="font-size:13px;font-weight:600;color:#334155;">Idiomas activos:</div>
+        <span class="tag tag-green">🇦🇷 Español</span>
+        <span class="tag tag-blue">🇺🇸 English</span>
+        <span class="tag tag-orange">🇧🇷 Português <span style="font-size:10px;">(beta)</span></span>
+        <button class="btn btn-sm btn-gray" onclick="alert('Agregar nuevo idioma')">➕ Agregar idioma</button>
+      </div>
+      <div class="card">
+        <div style="display:flex;gap:.5rem;margin-bottom:.85rem;flex-wrap:wrap;">
+          <input type="text" placeholder="Buscar clave o texto..." style="flex:1;min-width:150px;padding:8px 12px;border:1px solid var(--gray-bd);border-radius:7px;font-size:13px;">
+          <select style="padding:8px 12px;border:1px solid var(--gray-bd);border-radius:7px;font-size:13px;"><option>Todas las secciones</option><option>Conductor</option><option>Admin</option><option>Onboarding</option></select>
+        </div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Clave</th><th>🇦🇷 Español</th><th>🇺🇸 English</th><th>🇧🇷 Português</th></tr></thead>
+            <tbody>
+              <tr><td style="color:#94A3B8;font-size:11px;">available_trips</td><td>Viajes Disponibles</td><td>Available Trips</td><td><input type="text" value="Viagens Disponíveis" style="border:none;border-bottom:1px solid var(--gray-bd);font-size:12px;width:100%;padding:3px;"></td></tr>
+              <tr><td style="color:#94A3B8;font-size:11px;">send_offer</td><td>Hacer oferta →</td><td>Make offer →</td><td><input type="text" value="Fazer oferta →" style="border:none;border-bottom:1px solid var(--gray-bd);font-size:12px;width:100%;padding:3px;"></td></tr>
+              <tr><td style="color:#94A3B8;font-size:11px;">live_ranking</td><td>Ranking en vivo</td><td>Live ranking</td><td><input type="text" value="Ranking ao vivo" style="border:none;border-bottom:1px solid var(--gray-bd);font-size:12px;width:100%;padding:3px;"></td></tr>
+              <tr><td style="color:#94A3B8;font-size:11px;">winner_title</td><td>¡Ganaste la subasta!</td><td>You won the auction!</td><td><input type="text" value="Você ganhou o leilão!" style="border:none;border-bottom:1px solid var(--gray-bd);font-size:12px;width:100%;padding:3px;"></td></tr>
+              <tr><td style="color:#94A3B8;font-size:11px;">start_trip</td><td>🚚 Empezar viaje</td><td>🚚 Start trip</td><td><input type="text" placeholder="Pendiente..." style="border:none;border-bottom:1px solid #FFCDD2;font-size:12px;width:100%;padding:3px;background:#FFF8F8;"></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div style="margin-top:.85rem;display:flex;gap:.5rem;">
+          <button class="btn btn-green btn-sm" onclick="alert('Traducciones guardadas')">✓ Guardar cambios</button>
+          <button class="btn btn-gray btn-sm" onclick="alert('Exportar como JSON/CSV')">📥 Exportar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- PWA -->
+    <div id="st-pwa" class="tab-pane">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.85rem;">
+        <h3 class="section-title" style="margin:0;">📱 PWA / Offline Mode</h3>
+        <span class="version-badge badge-v2">V2.0</span>
+      </div>
+      <div class="card card-blue" style="margin-bottom:.75rem;">
+        <h4 style="color:var(--blue-dk);font-size:14px;font-weight:700;margin-bottom:.35rem;">¿Qué es el modo PWA?</h4>
+        <p style="font-size:13px;color:#334155;line-height:1.6;">Los conductores pueden instalar Smart Dispatch en su celular como si fuera una app nativa, sin necesidad de App Store. Funciona offline en zonas sin señal.</p>
+      </div>
+      <div class="card">
+        <div style="font-weight:700;font-size:14px;color:#1A202C;margin-bottom:.75rem;">Estado de implementación</div>
+        <div class="pwa-item">
+          <div class="pwa-check done">✓</div>
+          <div><div class="pwa-label">Service Worker</div><div class="pwa-desc">Caché de recursos estáticos activo</div></div>
+          <span class="status status-ok" style="margin-left:auto;">Activo</span>
+        </div>
+        <div class="pwa-item">
+          <div class="pwa-check done">✓</div>
+          <div><div class="pwa-label">Web App Manifest</div><div class="pwa-desc">Icono, nombre y colores configurados</div></div>
+          <span class="status status-ok" style="margin-left:auto;">Activo</span>
+        </div>
+        <div class="pwa-item">
+          <div class="pwa-check done">✓</div>
+          <div><div class="pwa-label">Instalable desde Chrome/Safari</div><div class="pwa-desc">Banner "Agregar a pantalla de inicio" funcional</div></div>
+          <span class="status status-ok" style="margin-left:auto;">Activo</span>
+        </div>
+        <div class="pwa-item">
+          <div class="pwa-check todo">⏳</div>
+          <div><div class="pwa-label">Sync offline de ofertas</div><div class="pwa-desc">Cola de ofertas cuando no hay internet</div></div>
+          <span class="status status-warn" style="margin-left:auto;">En desarrollo</span>
+        </div>
+        <div class="pwa-item">
+          <div class="pwa-check todo">⏳</div>
+          <div><div class="pwa-label">Push notifications nativas</div><div class="pwa-desc">Nuevos viajes y resultado de subasta</div></div>
+          <span class="status status-warn" style="margin-left:auto;">En desarrollo</span>
+        </div>
+        <div class="pwa-item">
+          <div class="pwa-check todo">⏳</div>
+          <div><div class="pwa-label">GPS offline</div><div class="pwa-desc">Tracking sin internet con sincronización posterior</div></div>
+          <span class="status status-warn" style="margin-left:auto;">Planificado</span>
+        </div>
+      </div>
+      <div style="margin-top:.75rem;display:flex;gap:.5rem;flex-wrap:wrap;">
+        <button class="btn btn-sm" onclick="alert('Forzar actualización de caché')">🔄 Actualizar caché</button>
+        <button class="btn btn-gray btn-sm" onclick="alert('Test de modo offline')">🔌 Test offline</button>
+      </div>
+    </div>
+
+    <!-- API -->
+    <div id="st-api" class="tab-pane">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.85rem;">
+        <h3 class="section-title" style="margin:0;">🔗 Integraciones & API</h3>
+        <span class="version-badge badge-v2">V2.0</span>
+      </div>
+      <div class="card" style="margin-bottom:.75rem;">
+        <div style="font-weight:700;font-size:14px;color:#1A202C;margin-bottom:.75rem;">API Keys</div>
+        <div style="display:flex;align-items:center;gap:.65rem;background:#F8FAFC;border:1px solid var(--gray-bd);border-radius:7px;padding:.75rem 1rem;margin-bottom:.5rem;flex-wrap:wrap;">
+          <code style="font-size:12px;flex:1;color:var(--purple);">sk-live-xxxxxxxxxxxxxxxxxxxxxxxxxxxx</code>
+          <button class="btn btn-gray btn-sm" onclick="alert('API Key copiada')">📋 Copiar</button>
+          <button class="btn btn-red btn-sm" onclick="confirm('¿Rotar API Key? Esto invalidará la clave actual.')">🔄 Rotar</button>
+        </div>
+        <div style="font-size:12px;color:var(--gray-txt);">Última solicitud: hace 2 minutos · 1,247 requests hoy</div>
+      </div>
+      <div class="card" style="margin-bottom:.75rem;">
+        <div style="font-weight:700;font-size:14px;color:#1A202C;margin-bottom:.75rem;">Webhooks configurados</div>
+        <div class="integration-card">
+          <div class="integration-icon">🪝</div>
+          <div style="flex:1;"><div class="integration-name">trip.assigned</div><div class="integration-desc">https://erp.logant.com/hooks/trip</div></div>
+          <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+        </div>
+        <div class="integration-card">
+          <div class="integration-icon">🪝</div>
+          <div style="flex:1;"><div class="integration-name">offer.received</div><div class="integration-desc">https://bi.logant.com/webhook/offers</div></div>
+          <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+        </div>
+        <div class="integration-card">
+          <div class="integration-icon">🪝</div>
+          <div style="flex:1;"><div class="integration-name">driver.approved</div><div class="integration-desc">No configurado</div></div>
+          <div class="toggle" onclick="this.classList.toggle('on')"></div>
+        </div>
+        <button class="btn btn-sm btn-gray" style="margin-top:.5rem;" onclick="alert('Agregar nuevo webhook')">➕ Agregar webhook</button>
+      </div>
+      <div class="card">
+        <div style="font-weight:700;font-size:14px;color:#1A202C;margin-bottom:.75rem;">Conectores disponibles</div>
+        <div class="integration-card">
+          <div class="integration-icon">📦</div>
+          <div style="flex:1;"><div class="integration-name">SAP Business One</div><div class="integration-desc">Sincronizar viajes y facturas</div></div>
+          <button class="btn btn-sm">Conectar</button>
+        </div>
+        <div class="integration-card">
+          <div class="integration-icon">📊</div>
+          <div style="flex:1;"><div class="integration-name">Power BI</div><div class="integration-desc">Dashboard de analytics avanzado</div></div>
+          <button class="btn btn-sm">Conectar</button>
+        </div>
+        <div class="integration-card">
+          <div class="integration-icon">💬</div>
+          <div style="flex:1;"><div class="integration-name">WhatsApp Business</div><div class="integration-desc">Notificaciones por WhatsApp</div></div>
+          <span class="status status-ok"><span class="dot"></span>Conectado</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Push Notifications -->
+    <div id="st-push" class="tab-pane">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.85rem;">
+        <h3 class="section-title" style="margin:0;">📣 Notificaciones Masivas</h3>
+        <span class="version-badge badge-v2">V2.0</span>
+      </div>
+      <div class="card" style="margin-bottom:.75rem;">
+        <div style="font-weight:700;font-size:14px;color:#1A202C;margin-bottom:.85rem;">Nueva notificación push</div>
+        <div class="form-group"><label>Tenant destino</label>
+          <select><option>Todos los tenants</option><option>Logant</option><option>CargaYa</option><option>FlexFlete</option></select>
+        </div>
+        <div class="form-group"><label>Segmento</label>
+          <select><option>Todos los conductores</option><option>Conductores activos</option><option>Conductores sin viajes hoy</option><option>Rating mayor a 4.5</option></select>
+        </div>
+        <div class="form-group"><label>Título</label><input type="text" placeholder="🚚 Nuevo viaje de alta prioridad"></div>
+        <div class="form-group"><label>Mensaje</label><textarea rows="3" placeholder="Hay un viaje urgente CABA → La Plata disponible. ¡Ofertá ahora!"></textarea></div>
+        <div class="form-group"><label>Programar envío</label>
+          <select><option>Enviar ahora</option><option>Programar</option></select>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-gray" onclick="alert('Vista previa de la notificación')">👁️ Vista previa</button>
+          <button class="btn btn-green" onclick="alert('✅ Notificación enviada a 486 conductores')">📣 Enviar notificación</button>
+        </div>
+      </div>
+      <div class="card">
+        <div style="font-weight:700;font-size:14px;color:#1A202C;margin-bottom:.85rem;">Historial de envíos</div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Fecha</th><th>Mensaje</th><th>Destinatarios</th><th>Apertura</th></tr></thead>
+            <tbody>
+              <tr><td>12/05 10:00</td><td>Nuevo viaje urgente disponible</td><td>486</td><td><span class="tag tag-green">68%</span></td></tr>
+              <tr><td>11/05 08:30</td><td>Recordatorio: verificá tu RTO</td><td>120</td><td><span class="tag tag-blue">54%</span></td></tr>
+              <tr><td>10/05 18:00</td><td>Resultados semana — Top conductores</td><td>486</td><td><span class="tag tag-orange">71%</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /super-view -->
+
+  <!-- ══════════ ONBOARDING VIEW ══════════ -->
+  <div id="onboarding-view" class="view">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem;">
+      <h2 class="section-title" style="margin:0;">📝 Registro de Conductor</h2>
+      <span class="version-badge badge-mvp">MVP</span>
+    </div>
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.4rem;">
+        <span style="font-size:13px;font-weight:600;color:var(--blue-dk);">Paso <span id="ob-cur">1</span> de 12</span>
+        <span style="font-size:11px;color:var(--gray-txt);">30–40 min</span>
+      </div>
+      <div class="progress-wrap"><div class="progress-fill" id="ob-progress" style="width:8.33%;"></div></div>
+      <div class="step-hdr">
+        <div class="step-circle" id="ob-circle">1</div>
+        <div class="step-info"><h3 id="ob-title">Invitación</h3><p id="ob-desc">Email + SMS</p></div>
+      </div>
+
+      <div class="form-section active" data-step="1"><div class="card card-blue"><p>Bienvenido a Smart Dispatch. Este formulario te registrará como conductor verificado.</p></div></div>
+      <div class="form-section" data-step="2">
+        <div class="card card-green"><h4 style="color:var(--green);margin-bottom:.35rem;">✅ Beneficios</h4><p style="font-size:13px;color:#388E3C;">Ofertar viajes • Countdown 60s • Ranking en vivo • GPS • Pagos rápidos</p></div>
+      </div>
+      <div class="form-section" data-step="3">
+        <div class="form-row2">
+          <div class="form-group"><label>Nombre <span class="req">*</span></label><input type="text" id="f_nombre"></div>
+          <div class="form-group"><label>Apellido <span class="req">*</span></label><input type="text" id="f_apellido"></div>
+        </div>
+        <div class="form-row2">
+          <div class="form-group"><label>DNI <span class="req">*</span></label><input type="text" id="f_dni"></div>
+          <div class="form-group"><label>Fecha nac. <span class="req">*</span></label><input type="date" id="f_fecha"></div>
+        </div>
+      </div>
+      <div class="form-section" data-step="4">
+        <div class="form-group"><label>Teléfono <span class="req">*</span></label><input type="tel" id="f_tel"></div>
+        <div class="form-group"><label>Email <span class="req">*</span></label><input type="email" id="f_email"></div>
+        <div class="form-group"><label>Domicilio <span class="req">*</span></label><input type="text" id="f_dom"></div>
+      </div>
+      <div class="form-section" data-step="5">
+        <div class="form-row2">
+          <div class="form-group"><label>N° Licencia <span class="req">*</span></label><input type="text" id="f_lic_num"></div>
+          <div class="form-group"><label>Categoría <span class="req">*</span></label><select id="f_lic_cat"><option>C1</option><option>C2</option><option>C3</option><option>E1</option></select></div>
+        </div>
+        <div class="form-group"><label>Vencimiento <span class="req">*</span></label><input type="date" id="f_lic_venc"></div>
+      </div>
+      <div class="form-section" data-step="6">
+        <div class="form-row2">
+          <div class="form-group"><label>Patente <span class="req">*</span></label><input type="text" id="f_patente"></div>
+          <div class="form-group"><label>Marca <span class="req">*</span></label><input type="text" id="f_marca"></div>
+        </div>
+        <div class="form-row2">
+          <div class="form-group"><label>Modelo <span class="req">*</span></label><input type="text" id="f_modelo"></div>
+          <div class="form-group"><label>Año <span class="req">*</span></label><input type="number" id="f_anio" placeholder="2020"></div>
+        </div>
+        <div class="form-group"><label>Capacidad (kg) <span class="req">*</span></label><input type="number" id="f_cap"></div>
+      </div>
+      <div class="form-section" data-step="7">
+        <div class="form-group"><label>N° Póliza RCO <span class="req">*</span></label><input type="text" id="f_poliza_num"></div>
+        <div class="form-group"><label>Compañía <span class="req">*</span></label><input type="text" id="f_poliza_cia"></div>
+        <div class="form-group"><label>Vencimiento <span class="req">*</span></label><input type="date" id="f_poliza_venc"></div>
+      </div>
+      <div class="form-section" data-step="8">
+        <div class="form-row2">
+          <div class="form-group"><label>Última RTO <span class="req">*</span></label><input type="date" id="f_rto_fecha"></div>
+          <div class="form-group"><label>Próx. vencimiento <span class="req">*</span></label><input type="date" id="f_rto_venc"></div>
+        </div>
+        <div class="form-group"><label>Centro RTO <span class="req">*</span></label><input type="text" id="f_rto_centro"></div>
+      </div>
+      <div class="form-section" data-step="9">
+        <label style="display:flex;gap:.5rem;align-items:center;margin-bottom:.75rem;font-size:14px;"><input type="checkbox" id="f_pel"> Cargas peligrosas</label>
+        <label style="display:flex;gap:.5rem;align-items:center;margin-bottom:.75rem;font-size:14px;"><input type="checkbox" id="f_temp"> Temperaturas controladas</label>
+        <label style="display:flex;gap:.5rem;align-items:center;font-size:14px;"><input type="checkbox" id="f_ali"> Alimentos</label>
+      </div>
+      <div class="form-section" data-step="10">
+        <label style="display:flex;gap:.5rem;align-items:flex-start;margin-bottom:.75rem;font-size:14px;cursor:pointer;"><input type="checkbox" id="f_pen" style="margin-top:2px;"> Sin antecedentes penales <span class="req">*</span></label>
+        <label style="display:flex;gap:.5rem;align-items:flex-start;font-size:14px;cursor:pointer;"><input type="checkbox" id="f_mul" style="margin-top:2px;"> Sin multas sin pagar <span class="req">*</span></label>
+      </div>
+      <div class="form-section" data-step="11">
+        <div class="form-group"><label>CBU (opcional)</label><input type="text" id="f_cbu" placeholder="22 dígitos"></div>
+        <div class="form-group"><label>Alias (opcional)</label><input type="text" id="f_alias"></div>
+      </div>
+      <div class="form-section" data-step="12">
+        <div class="card card-blue" style="margin-bottom:.85rem;">
+          <p style="font-size:13px;">Revisá tus datos y enviá para aprobación.</p>
+        </div>
+        <div style="background:var(--purple-lt);border-left:3px solid var(--purple);border-radius:0 8px 8px 0;padding:1rem;">
+          <p style="font-size:13px;color:var(--purple);font-weight:700;margin-bottom:.35rem;">⏱ Próximos pasos:</p>
+          <p style="font-size:12px;color:#4a148c;line-height:1.7;">1. Validación automática (1–2 hs)<br>2. Revisión manual (24–48 hs)<br>3. Email con resultado</p>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:.65rem;margin-top:1.5rem;justify-content:flex-end;">
+        <button class="btn btn-gray btn-sm" id="ob-prev" onclick="obNavStep(-1)" style="display:none;">← Anterior</button>
+        <button class="btn btn-sm" id="ob-next" onclick="obNavStep(1)">Siguiente →</button>
+        <button class="btn btn-green btn-sm" id="ob-submit" onclick="submitOb()" style="display:none;">✓ Enviar</button>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /content -->
+</div><!-- /app-view -->
+
+<!-- ASSIGN MODAL -->
+<div id="assign-overlay" class="overlay">
+  <div class="modal">
+    <h3>Seleccionar ganador</h3>
+    <p style="font-size:13px;color:var(--gray-txt);margin-bottom:.85rem;">Elegí al conductor ganador de la subasta:</p>
+    <div id="modal-offers"></div>
+    <div class="btn-row">
+      <button class="btn btn-green" onclick="confirmAssign()">✓ Asignar</button>
+      <button class="btn btn-gray" onclick="closeModal()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════
+var loginRole = 'conductor';
+var lang = 'es';
+var currentTrip = null;
+var currentOffer = 0;
+var selectedOfferIdx = null;
+var cdInterval1 = null;
+var cdInterval2 = null;
+var obCur = 1;
+var tonCur = 1;
+var selectedTonPlan = 'Starter';
+
+var trips = [
+  { id:1, origin:'Buenos Aires', dest:'Rosario', km:300, price:45000, cargo:'Bebidas', weight:8, urgency:'Normal', type:'Carga general' },
+  { id:2, origin:'CABA', dest:'La Plata', km:56, price:8500, cargo:'Electrónica', weight:3, urgency:'Urgente', type:'Electrónica' },
+  { id:3, origin:'Campana', dest:'Zárate', km:35, price:5200, cargo:'Alimentos', weight:4, urgency:'Normal', type:'Refrigerado' },
+  { id:4, origin:'Córdoba', dest:'Mendoza', km:720, price:92000, cargo:'Bebidas', weight:12, urgency:'Normal', type:'Carga general' }
+];
+
+var mockDrivers = [
+  { name:'Juan Pérez', dni:'25.845.632', docs:'10/10', status:'approved', trips:24 },
+  { name:'María González', dni:'32.156.478', docs:'10/10', status:'approved', trips:18 },
+  { name:'Carlos López', dni:'28.945.632', docs:'8/10', status:'pending', trips:0 },
+  { name:'Ana Martínez', dni:'29.735.641', docs:'10/10', status:'approved', trips:31 },
+  { name:'Roberto Díaz', dni:'26.847.593', docs:'6/10', status:'incomplete', trips:0 }
+];
+
+var mockTenants = [
+  { name:'Logant', plan:'Enterprise', conductores:85, mrr:4800, status:'active', created:'Jan 2025' },
+  { name:'CargaYa', plan:'Enterprise', conductores:120, mrr:4800, status:'active', created:'Feb 2025' },
+  { name:'FlexFlete', plan:'Pro', conductores:42, mrr:1499, status:'active', created:'Mar 2025' },
+  { name:'AgroTrans', plan:'Pro', conductores:38, mrr:1499, status:'active', created:'Mar 2025' },
+  { name:'MovilCarga', plan:'Starter', conductores:15, mrr:499, status:'active', created:'May 2025' },
+  { name:'RutaNorte', plan:'Starter', conductores:12, mrr:499, status:'trial', created:'May 2025' }
+];
+
+var historyData = [
+  { date:'12/05/2025', route:'Buenos Aires → Rosario', cargo:'Bebidas', pago:'$44,200', status:'Completado' },
+  { date:'10/05/2025', route:'CABA → La Plata', cargo:'Electrónica', pago:'$8,100', status:'Completado' },
+  { date:'08/05/2025', route:'Campana → Zárate', cargo:'Alimentos', pago:'$4,900', status:'Completado' },
+  { date:'05/05/2025', route:'Córdoba → Mendoza', cargo:'Bebidas', pago:'$88,000', status:'Completado' },
+  { date:'03/05/2025', route:'CABA → Rosario', cargo:'General', pago:'—', status:'Cancelado' },
+  { date:'30/04/2025', route:'GBA → Mar del Plata', cargo:'Electrónica', pago:'$52,300', status:'Completado' }
+];
+
+var obSteps = [
+  {t:'Invitación', d:'Email + SMS'},
+  {t:'Bienvenida', d:'Beneficios'},
+  {t:'Datos personales', d:'Información básica'},
+  {t:'Contacto', d:'Tel, email, domicilio'},
+  {t:'Licencia', d:'Número, categoría'},
+  {t:'Vehículo', d:'Patente, marca'},
+  {t:'Póliza RCO', d:'Seguro obligatorio'},
+  {t:'RTO', d:'Revisión técnica'},
+  {t:'Especialidades', d:'Tipos de carga'},
+  {t:'Antecedentes', d:'Penales y multas'},
+  {t:'Opcionales', d:'CBU / alias'},
+  {t:'Confirmación', d:'Resumen y envío'}
+];
+
+var tonSteps = [
+  {t:'Datos de la empresa', d:'Información básica del negocio'},
+  {t:'Datos fiscales', d:'CUIT, razón social, dirección'},
+  {t:'Logo y marca', d:'Identidad visual del tenant'},
+  {t:'Plan', d:'Elegí el plan que mejor te convenga'},
+  {t:'Admin principal', d:'Credenciales de acceso'},
+  {t:'Subdominio', d:'URL y configuración regional'},
+  {t:'Invitar conductores', d:'Opcional · Podés hacerlo después'},
+  {t:'Confirmación', d:'Revisión y envío'}
+];
+
+// ═══════════════════════════════════════
+//  LOGIN
+// ═══════════════════════════════════════
+function setRole(role, btn) {
+  loginRole = role;
+  document.querySelectorAll('.role-tab').forEach(function(b) { b.classList.remove('active'); });
+  if (btn) { btn.classList.add('active'); }
+}
+
+function quickLogin(role) {
+  loginRole = role;
+  document.querySelectorAll('.role-tab').forEach(function(b, i) {
+    b.classList.toggle('active', (i===0 && role==='conductor')||(i===1 && role==='admin')||(i===2 && role==='super'));
+  });
+  doLogin();
+}
+
+function doLogin() {
+  document.getElementById('login-view').style.display = 'none';
+  document.getElementById('app-view').style.display = 'block';
+  setupNavForRole();
+  if (loginRole === 'conductor') {
+    showView('conductor-view');
+    loadTrips();
+    loadHistory();
+    setNavActive(0);
+  } else if (loginRole === 'admin') {
+    showView('admin-view');
+    loadAdminData();
+    setNavActive(0);
+  } else {
+    showView('super-view');
+    loadSuperData();
+    setNavActive(0);
+  }
+  updateVersionPill();
+}
+
+function doLogout() {
+  document.getElementById('app-view').style.display = 'none';
+  document.getElementById('login-view').style.display = 'block';
+  document.getElementById('login-user').value = '';
+  document.getElementById('login-pass').value = '';
+}
+
+function updateVersionPill() {
+  var pill = document.getElementById('version-pill');
+  var userPill = document.getElementById('user-pill');
+  if (loginRole === 'super') {
+    pill.textContent = 'V2.0';
+    pill.style.background = 'rgba(106,27,154,.3)';
+    pill.style.borderColor = 'rgba(106,27,154,.5)';
+    userPill.textContent = '🌐 Super Admin';
+    document.getElementById('hdr-sub').textContent = 'Smart Dispatch · Global';
+  } else if (loginRole === 'admin') {
+    pill.textContent = 'V1.0';
+    pill.style.background = 'rgba(24,95,165,.3)';
+    pill.style.borderColor = 'rgba(24,95,165,.5)';
+    userPill.textContent = '⚙️ Admin Logant';
+    document.getElementById('hdr-sub').textContent = 'Logant · Logística Antártica';
+  } else {
+    pill.textContent = 'MVP';
+    pill.style.background = 'rgba(39,80,10,.3)';
+    pill.style.borderColor = 'rgba(39,80,10,.5)';
+    userPill.textContent = '👤 Carlos Díaz';
+    document.getElementById('hdr-sub').textContent = 'Logant · Logística Antártica';
+  }
+}
+
+// ═══════════════════════════════════════
+//  NAV
+// ═══════════════════════════════════════
+var conductorNavItems = [
+  { label:'🚚 Viajes', screen:'sc-list' },
+  { label:'👤 Perfil', screen:'sc-profile' },
+  { label:'📋 Historial', screen:'sc-history' },
+  { label:'🔔 Notificaciones', screen:'sc-notifications' }
+];
+
+function setupNavForRole() {
+  var tabs = document.getElementById('nav-tabs');
+  tabs.innerHTML = '';
+  var items;
+  if (loginRole === 'conductor') {
+    items = conductorNavItems;
+  } else if (loginRole === 'admin') {
+    items = [{label:'⚙️ Admin Logant'}];
+  } else {
+    items = [{label:'🌐 Super Admin'}];
+  }
+  items.forEach(function(item, i) {
+    var btn = document.createElement('button');
+    btn.className = 'nav-tab' + (i === 0 ? ' active' : '');
+    btn.textContent = item.label;
+    if (item.screen) {
+      (function(s, idx) {
+        btn.onclick = function() { goScreen(s); setNavActive(idx); };
+      })(item.screen, i);
+    }
+    tabs.appendChild(btn);
+  });
+}
+
+function setNavActive(idx) {
+  document.querySelectorAll('.nav-tab').forEach(function(b, i) { b.classList.toggle('active', i === idx); });
+}
+
+function showView(viewId) {
+  document.querySelectorAll('.view').forEach(function(v) { v.classList.remove('active'); });
+  document.getElementById(viewId).classList.add('active');
+}
+
+function goScreen(id) {
+  document.querySelectorAll('#conductor-view .screen').forEach(function(s) { s.classList.remove('active'); });
+  var el = document.getElementById(id);
+  if (el) { el.classList.add('active'); }
+  window.scrollTo(0, 0);
+}
+
+function showNotifications() {
+  goScreen('sc-notifications');
+  setNavActive(3);
+  document.getElementById('notif-count').style.display = 'none';
+}
+
+// ═══════════════════════════════════════
+//  CONDUCTOR FLOW
+// ═══════════════════════════════════════
+function loadTrips() {
+  var c = document.getElementById('trips-container');
+  if (!c) { return; }
+  c.innerHTML = trips.map(function(trip) {
+    return '<div class="trip-card" onclick="showDetail(' + trip.id + ')">' +
+      '<div class="trip-hdr">' +
+        '<div>' +
+          '<div class="trip-title">🚚 ' + trip.origin + ' → ' + trip.dest + '</div>' +
+          '<div class="trip-meta">📦 ' + trip.cargo + ' &nbsp;|&nbsp; 📍 ' + trip.km + ' km &nbsp;|&nbsp; ⚖️ ' + trip.weight + ' tn</div>' +
+          '<div>' +
+            '<span class="tag tag-blue">' + trip.type + '</span>' +
+            '<span class="tag ' + (trip.urgency !== 'Normal' ? 'tag-red' : 'tag-green') + '">' + trip.urgency + '</span>' +
+            '<span class="tag tag-orange">95% compat.</span>' +
+          '</div>' +
+        '</div>' +
+        '<div style="text-align:right;flex-shrink:0;">' +
+          '<div class="trip-price">$' + trip.price.toLocaleString('es-AR') + '</div>' +
+          '<div class="trip-km">' + trip.km + ' km</div>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
+function showDetail(id) {
+  currentTrip = null;
+  for (var i = 0; i < trips.length; i++) {
+    if (trips[i].id === id) { currentTrip = trips[i]; break; }
+  }
+  if (!currentTrip) { return; }
+  document.getElementById('det-route').textContent = currentTrip.origin + ' → ' + currentTrip.dest;
+  document.getElementById('det-meta').textContent = currentTrip.km + ' km | ' + currentTrip.cargo;
+  document.getElementById('det-origin').textContent = currentTrip.origin;
+  document.getElementById('det-dest').textContent = currentTrip.dest;
+  document.getElementById('det-km').textContent = currentTrip.km + ' km';
+  document.getElementById('det-cargo').textContent = currentTrip.cargo;
+  document.getElementById('det-weight').textContent = currentTrip.weight + ' tn';
+  document.getElementById('det-urgency').textContent = currentTrip.urgency;
+  document.getElementById('det-compat-cargo').textContent = 'Especialidad en ' + currentTrip.cargo;
+  document.getElementById('offer-input').value = currentTrip.price;
+  goScreen('sc-detail');
+  setNavActive(0);
+}
+
+function buildRanking(myOffer) {
+  var others = [
+    { name:'Juan M.', offer: myOffer - 500, stars:'4.8★' },
+    { name:'Roberto G.', offer: myOffer - 1000, stars:'4.7★' },
+    { name:'María L.', offer: myOffer - 1500, stars:'4.6★' },
+    { name:'Carlos D.', offer: myOffer - 2000, stars:'4.5★' }
+  ];
+  var all = [{ name:'Vos', offer: myOffer, stars:'4.9★', me: true }].concat(others);
+  all.sort(function(a, b) { return b.offer - a.offer; });
+  return all.map(function(r, i) {
+    return '<div class="rank-item ' + (r.me ? 'me' : '') + '">' +
+      '<div class="rank-pos ' + (i === 0 ? 'gold' : '') + '">#' + (i+1) + '</div>' +
+      '<div><div class="rank-name">' + r.name + (r.me ? ' 👈' : '') + '</div>' +
+      '<div class="rank-star">' + r.stars + '</div></div>' +
+      '<div class="rank-price">$' + r.offer.toLocaleString('es-AR') + '</div>' +
+    '</div>';
+  }).join('');
+}
+
+function sendOffer() {
+  var v = parseInt(document.getElementById('offer-input').value);
+  if (!v || v < 100) { alert('Ingresá un precio válido'); return; }
+  currentOffer = v;
+  document.getElementById('offer-confirm-text').textContent = 'Tu oferta de $' + v.toLocaleString('es-AR') + ' está en competencia';
+  var rk = buildRanking(v);
+  document.getElementById('ranking-offered').innerHTML = rk;
+  document.getElementById('ranking-waiting').innerHTML = rk;
+
+  if (cdInterval1) { clearInterval(cdInterval1); }
+  if (cdInterval2) { clearInterval(cdInterval2); }
+
+  var s1 = 60;
+  document.getElementById('cd-offered').textContent = s1;
+  cdInterval1 = setInterval(function() {
+    s1--;
+    var el = document.getElementById('cd-offered');
+    if (el) { el.textContent = Math.max(0, s1); }
+    if (s1 <= 0) { clearInterval(cdInterval1); }
+  }, 1000);
+
+  var s2 = 45;
+  document.getElementById('cd-waiting').textContent = s2;
+  cdInterval2 = setInterval(function() {
+    s2--;
+    var el = document.getElementById('cd-waiting');
+    if (el) { el.textContent = Math.max(0, s2); }
+    if (s2 <= 0) { clearInterval(cdInterval2); }
+  }, 1000);
+
+  goScreen('sc-offered');
+}
+
+function showWinner() {
+  document.getElementById('win-route').textContent = currentTrip.origin + ' → ' + currentTrip.dest;
+  document.getElementById('win-km').textContent = currentTrip.km + ' km';
+  document.getElementById('win-offer').textContent = '$' + currentOffer.toLocaleString('es-AR');
+  document.getElementById('cargo-route-label').textContent = currentTrip.origin + ' → ' + currentTrip.dest;
+  document.getElementById('cargo-type-label').textContent = currentTrip.type + (currentTrip.type === 'Refrigerado' ? ' (0–4°C)' : '');
+  document.getElementById('cargo-weight-label').textContent = currentTrip.weight + ' tn';
+  document.getElementById('gps-route').textContent = currentTrip.origin + ' → ' + currentTrip.dest;
+  document.getElementById('gps-offer-val').textContent = '$' + currentOffer.toLocaleString('es-AR');
+  goScreen('sc-winner');
+}
+
+function startTrip() {
+  goScreen('sc-gps');
+}
+
+function loadHistory() {
+  var tb = document.getElementById('history-tbody');
+  if (!tb) { return; }
+  tb.innerHTML = historyData.map(function(h) {
+    var cls = h.status === 'Completado' ? 'status-ok' : 'status-err';
+    return '<tr><td>' + h.date + '</td><td><strong>' + h.route + '</strong></td><td>' + h.cargo + '</td><td><strong>' + h.pago + '</strong></td><td><span class="status ' + cls + '">' + h.status + '</span></td></tr>';
+  }).join('');
+}
+
+function switchProfileTab(id, btn) {
+  document.querySelectorAll('[id^="pt-"]').forEach(function(p) { p.classList.remove('active'); });
+  document.getElementById(id).classList.add('active');
+  btn.closest('.admin-tabs').querySelectorAll('.admin-tab').forEach(function(b) { b.classList.remove('active'); });
+  btn.classList.add('active');
+}
+
+// ═══════════════════════════════════════
+//  ADMIN FLOW
+// ═══════════════════════════════════════
+function switchAdminTab(id, btn) {
+  document.querySelectorAll('[id^="at-"]').forEach(function(p) { p.classList.remove('active'); });
+  document.getElementById(id).classList.add('active');
+  btn.closest('.admin-tabs').querySelectorAll('.admin-tab').forEach(function(b) { b.classList.remove('active'); });
+  btn.classList.add('active');
+}
+
+function loadAdminData() {
+  loadDashAuctions();
+  loadAuctions();
+  loadDrivers();
+}
+
+function loadDashAuctions() {
+  var c = document.getElementById('dash-auctions');
+  if (!c) { return; }
+  c.innerHTML = trips.slice(0, 3).map(function(tr, i) {
+    return '<div class="card" style="margin-bottom:.65rem;">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem;">' +
+        '<div><div style="font-weight:700;font-size:14px;color:#1A202C;">🏆 ' + tr.origin + ' → ' + tr.dest + '</div>' +
+        '<div style="font-size:12px;color:var(--gray-txt);">' + tr.km + ' km | ' + tr.cargo + ' | Base: $' + tr.price.toLocaleString('es-AR') + '</div></div>' +
+        '<div style="text-align:right;">' +
+          '<div style="font-weight:700;color:var(--green);font-size:13px;">' + (8-i) + ' ofertas</div>' +
+          '<div style="font-size:16px;font-weight:800;color:#FF9800;font-family:Courier New,monospace;">' + (60-i*15) + 's</div>' +
+        '</div>' +
+      '</div>' +
+      '<div style="margin-top:.65rem;display:flex;gap:.5rem;">' +
+        '<button class="btn btn-sm btn-gray" onclick="openAssignModal(' + tr.id + ')">Asignar ganador</button>' +
+        '<button class="btn btn-sm btn-gray" onclick="alert(\'Mejor oferta: $' + (tr.price-500).toLocaleString('es-AR') + '\')">Ver ofertas</button>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
+function loadAuctions() {
+  var c = document.getElementById('auctions-container');
+  if (!c) { return; }
+  c.innerHTML = trips.map(function(tr, i) {
+    return '<div class="card" style="margin-bottom:.65rem;">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem;">' +
+        '<div><div style="font-weight:700;font-size:14px;">🏆 ' + tr.origin + ' → ' + tr.dest + '</div>' +
+        '<div style="font-size:12px;color:var(--gray-txt);">' + tr.km + ' km | ' + tr.cargo + '</div></div>' +
+        '<div style="text-align:right;">' +
+          '<div style="color:var(--green);font-weight:700;font-size:13px;">' + (6-i) + ' ofertas</div>' +
+          '<div style="font-size:18px;font-weight:800;color:#FF9800;font-family:Courier New,monospace;">' + (55-i*12) + 's</div>' +
+        '</div>' +
+      '</div>' +
+      '<div style="margin-top:.65rem;display:flex;gap:.5rem;">' +
+        '<button class="btn btn-sm btn-gray" onclick="openAssignModal(' + tr.id + ')">Asignar ganador</button>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
+function loadDrivers() {
+  var tb = document.getElementById('drivers-tbody');
+  if (!tb) { return; }
+  tb.innerHTML = mockDrivers.map(function(d, i) {
+    var sc, sl;
+    if (d.status === 'approved') { sc = 'status-ok'; sl = 'Aprobado'; }
+    else if (d.status === 'pending') { sc = 'status-warn'; sl = 'Pendiente'; }
+    else { sc = 'status-err'; sl = 'Incompleto'; }
+    var action = d.status === 'pending'
+      ? '<button class="btn btn-sm btn-green" onclick="approveDriver(' + i + ')">✓ Aprobar</button>'
+      : d.status === 'incomplete'
+      ? '<button class="btn btn-sm btn-red" onclick="alert(\'Conductor rechazado\')">✗ Rechazar</button>'
+      : '—';
+    return '<tr><td><strong>' + d.name + '</strong></td><td>' + d.dni + '</td><td>' + d.docs + '</td>' +
+      '<td><span class="status ' + sc + '"><span class="dot"></span>' + sl + '</span></td>' +
+      '<td>' + d.trips + '</td><td>' + action + '</td></tr>';
+  }).join('');
+}
+
+function approveDriver(i) {
+  mockDrivers[i].status = 'approved';
+  loadDrivers();
+  alert('✅ Conductor aprobado');
+}
+
+function createTrip() {
+  var o = document.getElementById('new-origin').value;
+  var d = document.getElementById('new-dest').value;
+  var km = parseInt(document.getElementById('new-km').value);
+  var price = parseInt(document.getElementById('new-price').value);
+  var cargo = document.getElementById('new-cargo').value;
+  var urgency = document.getElementById('new-urgency').value;
+  var weight = parseInt(document.getElementById('new-weight').value) || 5;
+  var type = document.getElementById('new-type').value;
+  if (!o || !d || !km || !price || !cargo) { alert('Completá todos los campos requeridos'); return; }
+  trips.push({ id: trips.length+1, origin: o, dest: d, km: km, price: price, cargo: cargo, weight: weight, urgency: urgency, type: type });
+  ['new-origin','new-dest','new-km','new-price','new-cargo','new-weight'].forEach(function(id) { document.getElementById(id).value = ''; });
+  loadDashAuctions();
+  loadAuctions();
+  loadTrips();
+  alert('✅ Viaje creado: ' + o + ' → ' + d);
+}
+
+// ═══════════════════════════════════════
+//  ASSIGN MODAL
+// ═══════════════════════════════════════
+var assignTrip = null;
+
+function openAssignModal(tripId) {
+  assignTrip = null;
+  for (var i = 0; i < trips.length; i++) {
+    if (trips[i].id === tripId) { assignTrip = trips[i]; break; }
+  }
+  if (!assignTrip) { return; }
+  selectedOfferIdx = null;
+  var offers = [
+    { name:'Juan Martínez', price: assignTrip.price - 500, stars:'4.8★', km:'12 km' },
+    { name:'Roberto García', price: assignTrip.price - 800, stars:'4.7★', km:'18 km' },
+    { name:'María López', price: assignTrip.price - 1200, stars:'4.9★', km:'8 km' }
+  ];
+  document.getElementById('modal-offers').innerHTML = offers.map(function(o, i) {
+    return '<div class="offer-sel-item" onclick="selectOffer(' + i + ',this)">' +
+      '<div><div style="font-weight:700;font-size:14px;">' + o.name + '</div>' +
+      '<div style="font-size:12px;color:var(--gray-txt);">' + o.stars + ' | ' + o.km + '</div></div>' +
+      '<div class="offer-sel-price">$' + o.price.toLocaleString('es-AR') + '</div>' +
+    '</div>';
+  }).join('');
+  document.getElementById('assign-overlay').classList.add('active');
+}
+
+function selectOffer(i, el) {
+  selectedOfferIdx = i;
+  document.querySelectorAll('.offer-sel-item').forEach(function(e) { e.classList.remove('selected'); });
+  el.classList.add('selected');
+}
+
+function confirmAssign() {
+  if (selectedOfferIdx === null) { alert('Seleccioná un conductor'); return; }
+  closeModal();
+  alert('✅ Viaje asignado correctamente');
+}
+
+function closeModal() {
+  document.getElementById('assign-overlay').classList.remove('active');
+  selectedOfferIdx = null;
+}
+
+// ═══════════════════════════════════════
+//  SUPER ADMIN
+// ═══════════════════════════════════════
+function switchSuperTab(id, btn) {
+  document.querySelectorAll('[id^="st-"]').forEach(function(p) { p.classList.remove('active'); });
+  document.getElementById(id).classList.add('active');
+  btn.closest('.admin-tabs').querySelectorAll('.admin-tab').forEach(function(b) { b.classList.remove('active'); });
+  btn.classList.add('active');
+}
+
+function loadSuperData() {
+  var list = document.getElementById('tenants-list');
+  if (!list) { return; }
+  list.innerHTML = mockTenants.map(function(t) {
+    var sc = t.status === 'active' ? 'status-ok' : 'status-warn';
+    var sl = t.status === 'active' ? 'Activo' : 'Trial';
+    return '<div class="tenant-card">' +
+      '<div>' +
+        '<div class="tenant-name">' + t.name + '</div>' +
+        '<div class="tenant-meta">' + t.conductores + ' conductores · Plan ' + t.plan + ' · Desde ' + t.created + '</div>' +
+      '</div>' +
+      '<div style="display:flex;align-items:center;gap:.85rem;flex-wrap:wrap;">' +
+        '<div class="tenant-mrr">$' + t.mrr.toLocaleString('es-AR') + '<span style="font-size:11px;color:var(--gray-txt);font-weight:400;">/mes</span></div>' +
+        '<span class="status ' + sc + '"><span class="dot"></span>' + sl + '</span>' +
+        '<div style="display:flex;gap:.35rem;">' +
+          '<button class="btn btn-sm btn-gray" onclick="alert(\'Editar tenant: ' + t.name + '\')">✏️</button>' +
+          '<button class="btn btn-sm btn-red" onclick="alert(\'Suspender: ' + t.name + '\')">⛔</button>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
+// ═══════════════════════════════════════
+//  ONBOARDING (CONDUCTOR)
+// ═══════════════════════════════════════
+function updateOb() {
+  var step = obSteps[obCur - 1];
+  document.getElementById('ob-circle').textContent = obCur;
+  document.getElementById('ob-cur').textContent = obCur;
+  document.getElementById('ob-title').textContent = step.t;
+  document.getElementById('ob-desc').textContent = step.d;
+  document.getElementById('ob-progress').style.width = (obCur / 12 * 100) + '%';
+  document.querySelectorAll('.form-section[data-step]').forEach(function(s) { s.classList.remove('active'); });
+  var active = document.querySelector('.form-section[data-step="' + obCur + '"]');
+  if (active) { active.classList.add('active'); }
+  document.getElementById('ob-prev').style.display = obCur > 1 ? 'inline-flex' : 'none';
+  document.getElementById('ob-next').style.display = obCur < 12 ? 'inline-flex' : 'none';
+  document.getElementById('ob-submit').style.display = obCur === 12 ? 'inline-flex' : 'none';
+}
+
+function obNavStep(dir) {
+  if (dir === 1 && obCur < 12) { obCur++; }
+  else if (dir === -1 && obCur > 1) { obCur--; }
+  updateOb();
+}
+
+function submitOb() {
+  alert('✅ Registro enviado para aprobación.\n\nRecibirás un email en 48–72 horas.');
+  obCur = 1;
+  updateOb();
+}
+
+// ═══════════════════════════════════════
+//  TENANT ONBOARDING
+// ═══════════════════════════════════════
+function updateTon() {
+  var step = tonSteps[tonCur - 1];
+  document.getElementById('ton-circle').textContent = tonCur;
+  document.getElementById('ton-cur').textContent = tonCur;
+  document.getElementById('ton-title').textContent = step.t;
+  document.getElementById('ton-desc').textContent = step.d;
+  document.getElementById('ton-progress').style.width = (tonCur / 8 * 100) + '%';
+  document.querySelectorAll('.form-section[data-ton]').forEach(function(s) { s.classList.remove('active'); });
+  var active = document.querySelector('.form-section[data-ton="' + tonCur + '"]');
+  if (active) { active.classList.add('active'); }
+  document.getElementById('ton-prev').style.display = tonCur > 1 ? 'inline-flex' : 'none';
+  document.getElementById('ton-next').style.display = tonCur < 8 ? 'inline-flex' : 'none';
+  document.getElementById('ton-submit').style.display = tonCur === 8 ? 'inline-flex' : 'none';
+  if (tonCur === 8) {
+    var nm = document.getElementById('ton-ename') ? document.getElementById('ton-ename').value || '—' : '—';
+    var sb = document.getElementById('ton-subdomain') ? document.getElementById('ton-subdomain').value || '—' : '—';
+    var em = document.getElementById('ton-emails') ? document.getElementById('ton-emails').value : '';
+    var inv = em ? em.split('\n').filter(function(e) { return e.trim(); }).length : 0;
+    document.getElementById('ton-summary-name').textContent = nm;
+    document.getElementById('ton-summary-sub').textContent = sb ? sb + '.smartdispatch.app' : '—';
+    document.getElementById('ton-summary-inv').textContent = inv;
+  }
+  if (tonCur === 6) {
+    var sd = document.getElementById('ton-subdomain');
+    if (sd) {
+      sd.addEventListener('input', function() {
+        var ok = document.getElementById('subdomain-ok');
+        if (ok) { ok.style.display = sd.value.length > 2 ? 'block' : 'none'; }
+      });
+    }
+  }
+}
+
+function tonStep(dir) {
+  if (dir === 1 && tonCur < 8) { tonCur++; }
+  else if (dir === -1 && tonCur > 1) { tonCur--; }
+  updateTon();
+}
+
+function tonSubmit() {
+  var name = document.getElementById('ton-ename') ? document.getElementById('ton-ename').value || 'Tu empresa' : 'Tu empresa';
+  alert('🎉 ¡Empresa "' + name + '" creada exitosamente!\n\nTu plataforma estará activa en los próximos 5 minutos.\nRecibirás un email de confirmación.');
+  showLogin();
+}
+
+function selectPlan(el) {
+  document.querySelectorAll('.plan-select-card').forEach(function(c) { c.classList.remove('selected'); });
+  el.classList.add('selected');
+}
+
+function selectColor(hex, el) {
+  document.getElementById('ton-color').value = hex;
+}
+
+// ═══════════════════════════════════════
+//  VIEWS VISIBILITY
+// ═══════════════════════════════════════
+function showLanding() {
+  document.getElementById('login-view').style.display = 'none';
+  document.getElementById('landing-view').style.display = 'block';
+  document.getElementById('tenant-onboard-view').style.display = 'none';
+  document.getElementById('app-view').style.display = 'none';
+}
+
+function showLogin() {
+  document.getElementById('login-view').style.display = 'block';
+  document.getElementById('landing-view').style.display = 'none';
+  document.getElementById('tenant-onboard-view').style.display = 'none';
+  document.getElementById('app-view').style.display = 'none';
+}
+
+function showTenantOnboarding() {
+  document.getElementById('login-view').style.display = 'none';
+  document.getElementById('landing-view').style.display = 'none';
+  document.getElementById('tenant-onboard-view').style.display = 'block';
+  document.getElementById('app-view').style.display = 'none';
+  tonCur = 1;
+  updateTon();
+}
+
+// ═══════════════════════════════════════
+//  LANG TOGGLE
+// ═══════════════════════════════════════
+function toggleLang() {
+  lang = lang === 'es' ? 'en' : 'es';
+  document.getElementById('lang-btn').textContent = lang === 'es' ? 'EN' : 'ES';
+  alert(lang === 'en' ? 'Language switched to English. (Full i18n implemented in production build)' : 'Idioma: Español');
+}
+
+// ═══════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════
+document.getElementById('login-view').style.display = 'block';
+document.getElementById('app-view').style.display = 'none';
+document.getElementById('landing-view').style.display = 'none';
+document.getElementById('tenant-onboard-view').style.display = 'none';
+updateOb();
+</script>
+</body>
+</html>
